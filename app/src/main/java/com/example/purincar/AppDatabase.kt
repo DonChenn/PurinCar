@@ -22,7 +22,7 @@ abstract class AppDatabase : RoomDatabase() {
                     AppDatabase::class.java,
                     "purincar_database"
                 )
-                    .fallbackToDestructiveMigration()  // Add this line
+                    .fallbackToDestructiveMigration()
                     .build()
                     .also { INSTANCE = it }
             }
