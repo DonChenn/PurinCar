@@ -4,10 +4,18 @@ import android.os.Bundle
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
 import androidx.activity.enableEdgeToEdge
-import androidx.navigation.compose.rememberNavController
+import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.foundation.layout.padding
+import androidx.compose.material3.Text
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
+import androidx.compose.ui.*
+import androidx.compose.ui.unit.dp
 import com.example.purincar.ui.theme.PurinCarTheme
-import androidx.navigation.compose.NavHost
-import androidx.navigation.compose.composable
+import java.nio.file.WatchEvent
 
 class MainActivity : ComponentActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
@@ -15,26 +23,23 @@ class MainActivity : ComponentActivity() {
         enableEdgeToEdge()
         setContent {
             PurinCarTheme {
-                val navController = rememberNavController()
+                var cars by remember {
+                    mutableStateOf(listOf<String>())
+                }
 
-                NavHost(navController = navController, startDestination = "cars") {
-                    composable("cars") {
-                        CarSelectionScreen(navController)
+                if(cars.isNotEmpty()) {
+                    for(car in cars) {
+                        Text(text = car)
                     }
-
-                    composable("records/{carId}") { backStackEntry ->
-                        val carId = backStackEntry.arguments?.getString("carId")
-                        if (carId != null) {
-                            CarRecordsListScreen(carId)
-                        }
-                    }
-
-                    composable("records/{carId}/{recordType}") { backStackEntry ->
-                        val carId = backStackEntry.arguments?.getString("carId")
-                        val recordType = backStackEntry.arguments?.getString("recordType")
-                        if (carId != null && recordType != null) {
-                            CarRecordScreen(carId, recordType)
-                        }
+                }
+                else {
+                    Box(
+                        modifier = Modifier
+                            .fillMaxSize()
+                            .padding(16.dp),
+                        contentAlignment = Alignment.Center
+                    ) {
+                        Text(text = "Please enter a car")
                     }
                 }
             }
