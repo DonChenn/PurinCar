@@ -9,6 +9,7 @@ import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Add
+import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.FloatingActionButton
 import androidx.compose.material3.Icon
 import androidx.compose.material3.Text
@@ -25,10 +26,19 @@ import androidx.compose.ui.unit.sp
 import com.example.purincar.ui.theme.PurinBrown
 import kotlin.collections.plus
 
+@OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun Home() {
     var cars by remember {
         mutableStateOf(listOf<String>())
+    }
+
+    var showDialog by remember {
+        mutableStateOf(false)
+    }
+
+    var newCar by remember {
+        mutableStateOf("")
     }
 
     if(cars.isNotEmpty()) {
@@ -67,19 +77,30 @@ fun Home() {
                 fontSize = 24.sp,
                 modifier = Modifier.align(Alignment.Center)
             )
-
-            FloatingActionButton(
-                onClick = ({ cars = cars + listOf("Camry", "Civic") }),
-                modifier = Modifier.align(Alignment.BottomEnd),
-                shape = CircleShape,
-                containerColor = PurinBrown
-            ) {
-                Icon(
-                    imageVector = Icons.Default.Add,
-                    contentDescription = "Add a car",
-                    tint = Color.White
-                )
-            }
         }
     }
+
+    Box(
+        modifier = Modifier
+            .fillMaxSize()
+            .padding(48.dp)
+    ) {
+        FloatingActionButton(
+            onClick = { showDialog = true },
+            modifier = Modifier.align(Alignment.BottomEnd),
+            shape = CircleShape,
+            containerColor = PurinBrown
+        ) {
+            Icon(
+                imageVector = Icons.Default.Add,
+                contentDescription = "Add a car",
+                tint = Color.White
+            )
+        }
+    }
+
+    if (showDialog) {
+        TODO("Add dialog")
+    }
 }
+
