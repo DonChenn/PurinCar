@@ -38,7 +38,7 @@ import com.example.purincar.viewmodels.CarViewModel
 @Composable
 fun CarSelectionScreen(
     viewModel: CarViewModel = viewModel(),
-    onCarClick: (String) -> Unit
+    onCarClick: (CarDetails) -> Unit
 ) {
     val cars = viewModel.cars
 
@@ -55,7 +55,7 @@ fun CarSelectionScreen(
             items(cars.size) { currentCar ->
                 FloatingActionButton(
                     onClick = ({
-                        onCarClick(cars[currentCar].name)
+                        onCarClick(cars[currentCar])
                     }),
                     containerColor = PurinBrown,
                     modifier = Modifier
