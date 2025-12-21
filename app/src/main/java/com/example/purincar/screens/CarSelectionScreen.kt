@@ -1,4 +1,4 @@
-package com.example.purincar
+package com.example.purincar.screens
 
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.fillMaxSize
@@ -26,24 +26,23 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
-import androidx.navigation.NavController
+import androidx.navigation3.runtime.NavBackStack
 import com.example.purincar.ui.theme.PurinBrown
-import kotlin.collections.plus
+import androidx.lifecycle.viewmodel.compose.viewModel
+import androidx.navigation3.runtime.NavKey
+import com.example.purincar.viewmodels.CarViewModel
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
-fun CarSelectionScreen(navController: NavController) {
-    var cars by remember {
-        mutableStateOf(listOf<String>())
-    }
+fun CarSelectionScreen(
+    backStack: NavBackStack<NavKey>,
+    viewModel: CarViewModel = viewModel(),
+    onCarClick: (String) -> Unit
+) {
+    val cars = viewModel.cars
 
-    var showDialog by remember {
-        mutableStateOf(false)
-    }
-
-    var newCarInput by remember {
-        mutableStateOf("")
-    }
+    var showDialog by remember { mutableStateOf(false) }
+    var newCarInput by remember { mutableStateOf("") }
 
     if(cars.isNotEmpty()) {
         LazyColumn(
@@ -54,7 +53,7 @@ fun CarSelectionScreen(navController: NavController) {
             items(cars.size) { currentCar ->
                 FloatingActionButton(
                     onClick = ({
-                        navController.navigate(Routes.CAR_DETAILS_SCREEN+"/${cars[currentCar]}")
+                        onCarClick(cars[currentCar])
                     }),
                     containerColor = PurinBrown,
                     modifier = Modifier
@@ -119,7 +118,7 @@ fun CarSelectionScreen(navController: NavController) {
                 TextButton(
                     onClick = {
                         if (newCarInput.isNotBlank()) {
-                            cars = cars + newCarInput
+                            viewModel.addCar(newCarInput)
                             newCarInput = ""
                             showDialog = false
                         }
