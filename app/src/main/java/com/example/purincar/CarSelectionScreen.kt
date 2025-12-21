@@ -26,12 +26,13 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import androidx.navigation.NavController
 import com.example.purincar.ui.theme.PurinBrown
 import kotlin.collections.plus
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
-fun Home() {
+fun CarSelectionScreen(navController: NavController) {
     var cars by remember {
         mutableStateOf(listOf<String>())
     }
@@ -52,7 +53,9 @@ fun Home() {
         ) {
             items(cars.size) { currentCar ->
                 FloatingActionButton(
-                    onClick = ({ cars = cars - cars[currentCar] }),
+                    onClick = ({
+                        navController.navigate(Routes.CAR_DETAILS_SCREEN+"/${cars[currentCar]}")
+                    }),
                     containerColor = PurinBrown,
                     modifier = Modifier
                         .fillMaxWidth()

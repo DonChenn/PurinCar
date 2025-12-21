@@ -12,6 +12,9 @@ import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.size
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.unit.dp
+import androidx.navigation.compose.NavHost
+import androidx.navigation.compose.composable
+import androidx.navigation.compose.rememberNavController
 import com.example.purincar.ui.theme.PurinCarTheme
 import com.example.purincar.ui.theme.*
 
@@ -33,7 +36,16 @@ class MainActivity : ComponentActivity() {
                             .fillMaxSize()
                             .background(PurinYellow)
                     ) {
-                        Home()
+                        val navController = rememberNavController()
+                        NavHost(navController = navController, startDestination = Routes.CAR_SELECTION_SCREEN, builder = {
+                            composable(Routes.CAR_SELECTION_SCREEN) {
+                                CarSelectionScreen(navController)
+                            }
+                            composable(Routes.CAR_DETAILS_SCREEN+"/{car}") {
+                                val car = it.arguments?.getString("car")
+                                CarDetailsScreen(navController, car?:"NO CAR")
+                            }
+                        })
                     }
                 }
             }
