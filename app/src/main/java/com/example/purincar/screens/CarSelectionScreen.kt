@@ -26,16 +26,13 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
-import androidx.navigation3.runtime.NavBackStack
 import com.example.purincar.ui.theme.PurinBrown
 import androidx.lifecycle.viewmodel.compose.viewModel
-import androidx.navigation3.runtime.NavKey
 import com.example.purincar.viewmodels.CarViewModel
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun CarSelectionScreen(
-    backStack: NavBackStack<NavKey>,
     viewModel: CarViewModel = viewModel(),
     onCarClick: (String) -> Unit
 ) {

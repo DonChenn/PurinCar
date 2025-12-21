@@ -7,14 +7,11 @@ import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.lifecycle.viewmodel.compose.viewModel
-import androidx.navigation3.runtime.NavBackStack
-import androidx.navigation3.runtime.NavKey
 import com.example.purincar.viewmodels.CarDetailsViewModel
 
 @Composable
 fun CarDetailsScreen(
     car: String,
-    backStack: NavBackStack<NavKey>,
     viewModel: CarDetailsViewModel = viewModel {
         CarDetailsViewModel(car)
     }

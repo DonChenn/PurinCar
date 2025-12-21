@@ -6,8 +6,8 @@ import kotlinx.serialization.Serializable
 @Serializable
 sealed interface Route : NavKey {
     @Serializable
-    data object CarSelectionScreen : Route
+    data object CarSelectionScreen : Route, NavKey
 
     @Serializable
-    data class CarDetailsScreen(val car: String) : Route
+    data class CarDetailsScreen(val car: String) : Route, NavKey
 }
