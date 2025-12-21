@@ -11,8 +11,8 @@ data class CarDetails(
 )
 
 class CarDetailsViewModel(
-    private val car: String
+    private val car: CarDetails
 ) : ViewModel() {
-    private val _state = MutableStateFlow(CarDetails(car))
+    private val _state = MutableStateFlow(CarDetails(car.name, car.mileage))
     val state: StateFlow<CarDetails> = _state.asStateFlow()
 }

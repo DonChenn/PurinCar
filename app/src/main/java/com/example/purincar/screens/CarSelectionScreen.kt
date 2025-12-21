@@ -1,6 +1,8 @@
 package com.example.purincar.screens
 
+import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
@@ -18,6 +20,7 @@ import androidx.compose.material3.TextButton
 import androidx.compose.material3.TextField
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
@@ -28,6 +31,7 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.example.purincar.ui.theme.PurinBrown
 import androidx.lifecycle.viewmodel.compose.viewModel
+import com.example.purincar.viewmodels.CarDetails
 import com.example.purincar.viewmodels.CarViewModel
 
 @OptIn(ExperimentalMaterial3Api::class)
@@ -40,6 +44,7 @@ fun CarSelectionScreen(
 
     var showDialog by remember { mutableStateOf(false) }
     var newCarInput by remember { mutableStateOf("") }
+    var carMileage by remember { mutableStateOf("") }
 
     if(cars.isNotEmpty()) {
         LazyColumn(
@@ -50,7 +55,7 @@ fun CarSelectionScreen(
             items(cars.size) { currentCar ->
                 FloatingActionButton(
                     onClick = ({
-                        onCarClick(cars[currentCar])
+                        onCarClick(cars[currentCar].name)
                     }),
                     containerColor = PurinBrown,
                     modifier = Modifier
@@ -59,7 +64,7 @@ fun CarSelectionScreen(
                         .size(128.dp),
                 ) {
                     Text(
-                        text = cars[currentCar],
+                        text = cars[currentCar].name,
                         fontSize = 24.sp,
                         color = Color.White
                     )
@@ -105,17 +110,28 @@ fun CarSelectionScreen(
             onDismissRequest = { showDialog = false },
             title = { Text(text = "Add a car") },
             text = {
-                TextField(
-                    value = newCarInput,
-                    onValueChange = { newCarInput = it },
-                    placeholder = { Text(text = "Car name") }
-                )
+                Column(
+                    verticalArrangement = Arrangement.Center
+                ) {
+                    TextField(
+                        value = newCarInput,
+                        onValueChange = { newCarInput = it },
+                        placeholder = { Text(text = "Car name") }
+                    )
+
+                    TextField(
+                        value = carMileage,
+                        onValueChange = { carMileage = it },
+                        placeholder = { Text(text = "Car mileage") }
+                    )
+                }
             },
             confirmButton = {
                 TextButton(
                     onClick = {
-                        if (newCarInput.isNotBlank()) {
-                            viewModel.addCar(newCarInput)
+                        if (newCarInput.isNotBlank() && carMileage.isNotBlank()) {
+                            val car = CarDetails(newCarInput, carMileage.toInt())
+                            viewModel.addCar(car)
                             newCarInput = ""
                             showDialog = false
                         }

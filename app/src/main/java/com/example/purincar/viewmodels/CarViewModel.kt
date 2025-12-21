@@ -6,16 +6,16 @@ import androidx.compose.runtime.setValue
 import androidx.lifecycle.ViewModel
 
 class CarViewModel : ViewModel() {
-    var cars by mutableStateOf(listOf<String>())
+    var cars by mutableStateOf(listOf<CarDetails>())
         private set
 
-    fun addCar(car: String) {
-        if(car.isNotBlank()) {
+    fun addCar(car: CarDetails) {
+        if(car.name.isNotBlank()) {
             cars = cars + car
         }
     }
 
-    fun removeCar(car: String) {
+    fun removeCar(car: CarDetails) {
         cars = cars - car
 
     }

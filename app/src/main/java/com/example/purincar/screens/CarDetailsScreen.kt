@@ -7,11 +7,12 @@ import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.lifecycle.viewmodel.compose.viewModel
+import com.example.purincar.viewmodels.CarDetails
 import com.example.purincar.viewmodels.CarDetailsViewModel
 
 @Composable
 fun CarDetailsScreen(
-    car: String,
+    car: CarDetails,
     viewModel: CarDetailsViewModel = viewModel {
         CarDetailsViewModel(car)
     }
@@ -21,7 +22,7 @@ fun CarDetailsScreen(
         contentAlignment = Alignment.Center,
     ) {
         Text(
-            text = "Car Details Screen for $car",
+            text = "Car Details Screen for ${car.name}",
         )
     }
 }
