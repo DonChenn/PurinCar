@@ -216,8 +216,8 @@ fun ServiceStatusItem(
             Spacer(modifier = Modifier.height(12.dp))
 
             Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) {
-                Text(text = "Mileage", color = Color.White.copy(alpha = 0.8f), fontSize = 12.sp)
-                Text(text = status.mileageText, color = Color.White.copy(alpha = 0.8f), fontSize = 12.sp)
+                Text(text = "Mileage", color = Color.White, fontSize = 12.sp)
+                Text(text = status.mileageText, color = Color.White, fontSize = 12.sp)
             }
             LinearProgressIndicator(
                 progress = { status.mileageProgress },
@@ -229,13 +229,13 @@ fun ServiceStatusItem(
             Spacer(modifier = Modifier.height(8.dp))
 
             Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) {
-                Text(text = "Time", color = Color.White.copy(alpha = 0.8f), fontSize = 12.sp)
-                Text(text = status.timeText, color = Color.White.copy(alpha = 0.8f), fontSize = 12.sp)
+                Text(text = "Time", color = Color.White, fontSize = 12.sp)
+                Text(text = status.timeText, color = Color.White, fontSize = 12.sp)
             }
             LinearProgressIndicator(
                 progress = { status.timeProgress },
                 modifier = Modifier.fillMaxWidth().height(6.dp),
-                color = Color.Cyan.copy(alpha = 0.7f),
+                color = PurinYellow,
                 trackColor = Color.White.copy(alpha = 0.3f),
             )
         }

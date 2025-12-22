@@ -81,7 +81,7 @@ fun ServiceHistoryScreen(
                             ) {
                                 Column {
                                     Text(text = record.date, color = Color.White, fontSize = 16.sp)
-                                    Text(text = "${record.mileageAtService} mi", color = Color.White, fontWeight = FontWeight.Bold)
+                                    Text(text = "${record.mileageAtService} miles", color = Color.White, fontWeight = FontWeight.Bold)
                                 }
 
                                 IconButton(
