@@ -33,6 +33,9 @@ interface CarDao {
     @Insert
     suspend fun insertCar(car: CarEntity)
 
+    @Update
+    suspend fun updateCar(car: CarEntity)
+
     @Delete
     suspend fun deleteCar(car: CarEntity)
 
