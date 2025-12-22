@@ -125,7 +125,11 @@ fun CarDetailsScreen(
                         }
                         isEditingMileage = false
                         focusManager.clearFocus()
-                    })
+                    }),
+                    colors = OutlinedTextFieldDefaults.colors(
+                        focusedTextColor = Color.Black,
+                        unfocusedTextColor = Color.Black
+                    )
                 )
                 IconButton(onClick = {
                     val newMileage = mileageInput.toIntOrNull()
