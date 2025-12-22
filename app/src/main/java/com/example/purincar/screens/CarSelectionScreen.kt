@@ -19,8 +19,8 @@ import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.material3.TextField
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
-import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
@@ -30,17 +30,16 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.example.purincar.ui.theme.PurinBrown
-import androidx.lifecycle.viewmodel.compose.viewModel
 import com.example.purincar.viewmodels.CarDetails
 import com.example.purincar.viewmodels.CarViewModel
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun CarSelectionScreen(
-    viewModel: CarViewModel = viewModel(),
+    viewModel: CarViewModel,
     onCarClick: (CarDetails) -> Unit
 ) {
-    val cars = viewModel.cars
+    val cars by viewModel.cars.collectAsState()
 
     var showDialog by remember { mutableStateOf(false) }
     var newCarInput by remember { mutableStateOf("") }
@@ -130,7 +129,7 @@ fun CarSelectionScreen(
                 TextButton(
                     onClick = {
                         if (newCarInput.isNotBlank() && carMileage.isNotBlank()) {
-                            val car = CarDetails(newCarInput, carMileage.toInt())
+                            val car = CarDetails(name = newCarInput, currentMileage = carMileage.toInt())
                             viewModel.addCar(car)
                             newCarInput = ""
                             showDialog = false
@@ -148,4 +147,3 @@ fun CarSelectionScreen(
         )
     }
 }
-

@@ -9,14 +9,14 @@ import androidx.compose.foundation.layout.size
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.unit.dp
+import com.example.purincar.data.CarDao
+import com.example.purincar.navigation.NavigationRoot
 import com.example.purincar.ui.theme.PurinBrown
 import com.example.purincar.ui.theme.PurinCarTheme
 import com.example.purincar.ui.theme.PurinYellow
-import com.example.purincar.navigation.NavigationRoot
-
 
 @Composable
-fun App() {
+fun App(dao: CarDao) {
     PurinCarTheme {
         Column {
             Box(
@@ -30,7 +30,8 @@ fun App() {
                     .fillMaxSize()
                     .background(PurinYellow)
             ) {
-                NavigationRoot()
+                // Pass dao to NavigationRoot
+                NavigationRoot(dao = dao)
             }
         }
     }

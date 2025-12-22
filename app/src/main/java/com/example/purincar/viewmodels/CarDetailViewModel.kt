@@ -1,20 +1,39 @@
 package com.example.purincar.viewmodels
 
 import androidx.lifecycle.ViewModel
-import kotlinx.coroutines.flow.MutableStateFlow
-import kotlinx.coroutines.flow.StateFlow
-import kotlinx.coroutines.flow.asStateFlow
-import kotlinx.serialization.Serializable
-
-@Serializable
-data class CarDetails(
-    val name: String = "",
-    val mileage: Int = 0
-)
+import androidx.lifecycle.viewModelScope
+import com.example.purincar.data.CarDao
+import com.example.purincar.data.CarEntity
+import com.example.purincar.data.MaintenanceRecord
+import kotlinx.coroutines.flow.*
+import kotlinx.coroutines.launch
 
 class CarDetailsViewModel(
-    private val car: CarDetails
+    private val dao: CarDao,
+    private val carId: Int
 ) : ViewModel() {
-    private val _state = MutableStateFlow(CarDetails(car.name, car.mileage))
-    val state: StateFlow<CarDetails> = _state.asStateFlow()
+
+    val carInfo: Flow<CarEntity?> = dao.getAllCars().map { list ->
+        list.find { it.id == carId }
+    }
+
+    val records: StateFlow<List<MaintenanceRecord>> = dao.getRecordsForCar(carId)
+        .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), emptyList())
+
+    fun addRecord(serviceType: String, date: String, mileage: Int) {
+        viewModelScope.launch {
+            val newRecord = MaintenanceRecord(
+                carId = carId,
+                serviceType = serviceType,
+                date = date,
+                mileageAtService = mileage
+            )
+            dao.insertRecord(newRecord)
+
+            val currentCar = carInfo.firstOrNull()
+            if (currentCar != null && mileage > currentCar.currentMileage) {
+
+            }
+        }
+    }
 }
