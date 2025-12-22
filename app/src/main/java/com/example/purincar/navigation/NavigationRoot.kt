@@ -2,11 +2,14 @@ package com.example.purincar.navigation
 
 import android.os.Build
 import androidx.annotation.RequiresApi
+import androidx.compose.animation.slideInHorizontally
+import androidx.compose.animation.slideOutHorizontally
+import androidx.compose.animation.togetherWith
 import androidx.compose.runtime.Composable
-import androidx.lifecycle.viewmodel.compose.viewModel
-import androidx.lifecycle.viewmodel.navigation3.rememberViewModelStoreNavEntryDecorator
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.ViewModelProvider
+import androidx.lifecycle.viewmodel.compose.viewModel
+import androidx.lifecycle.viewmodel.navigation3.rememberViewModelStoreNavEntryDecorator
 import androidx.navigation3.runtime.NavEntry
 import androidx.navigation3.runtime.rememberNavBackStack
 import androidx.navigation3.runtime.rememberSaveableStateHolderNavEntryDecorator
@@ -30,6 +33,15 @@ fun NavigationRoot(dao: CarDao) {
             rememberSaveableStateHolderNavEntryDecorator(),
             rememberViewModelStoreNavEntryDecorator()
         ),
+        transitionSpec = {
+            slideInHorizontally { it } togetherWith slideOutHorizontally { -it }
+        },
+        popTransitionSpec = {
+            slideInHorizontally { -it } togetherWith slideOutHorizontally { it }
+        },
+        predictivePopTransitionSpec = {
+            slideInHorizontally { -it } togetherWith slideOutHorizontally { it }
+        },
         entryProvider = { key ->
             when (key) {
                 is Route.CarSelectionScreen -> {
