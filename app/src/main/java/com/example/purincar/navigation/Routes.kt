@@ -5,9 +5,6 @@ import kotlinx.serialization.Serializable
 import com.example.purincar.viewmodels.CarDetails
 
 @Serializable
-data class CarDetails(val id: Int, val name: String)
-
-@Serializable
 sealed interface Route : NavKey {
     @Serializable
     data object CarSelectionScreen : Route, NavKey
