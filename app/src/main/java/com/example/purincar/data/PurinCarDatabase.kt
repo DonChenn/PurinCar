@@ -47,6 +47,9 @@ interface CarDao {
 
     @Query("SELECT * FROM maintenance_records WHERE carId = :carId ORDER BY date DESC")
     fun getRecordsForCar(carId: Int): Flow<List<MaintenanceRecord>>
+
+    @Query("SELECT * FROM maintenance_records WHERE carId = :carId AND serviceType = :serviceType ORDER BY date DESC")
+    fun getRecordsForType(carId: Int, serviceType: String): Flow<List<MaintenanceRecord>>
 }
 
 @Database(entities = [CarEntity::class, MaintenanceRecord::class], version = 1)

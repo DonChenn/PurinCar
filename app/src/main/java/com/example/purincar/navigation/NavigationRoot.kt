@@ -12,8 +12,10 @@ import androidx.navigation3.ui.NavDisplay
 import com.example.purincar.data.CarDao
 import com.example.purincar.screens.CarDetailsScreen
 import com.example.purincar.screens.CarSelectionScreen
+import com.example.purincar.screens.ServiceHistoryScreen
 import com.example.purincar.viewmodels.CarDetailsViewModel
 import com.example.purincar.viewmodels.CarViewModel
+import com.example.purincar.viewmodels.ServiceHistoryViewModel
 
 @Composable
 fun NavigationRoot(dao: CarDao) {
@@ -29,7 +31,6 @@ fun NavigationRoot(dao: CarDao) {
             when (key) {
                 is Route.CarSelectionScreen -> {
                     NavEntry(key) {
-                        // Create ViewModel with Factory to inject DAO
                         val viewModel = viewModel<CarViewModel>(
                             factory = object : ViewModelProvider.Factory {
                                 override fun <T : ViewModel> create(modelClass: Class<T>): T {
@@ -37,7 +38,6 @@ fun NavigationRoot(dao: CarDao) {
                                 }
                             }
                         )
-
                         CarSelectionScreen(
                             viewModel = viewModel,
                             onCarClick = { carObject ->
@@ -48,7 +48,6 @@ fun NavigationRoot(dao: CarDao) {
                 }
                 is Route.CarDetailsScreen -> {
                     NavEntry(key) {
-                        // Create ViewModel with Factory to inject DAO & Car ID
                         val viewModel = viewModel<CarDetailsViewModel>(
                             factory = object : ViewModelProvider.Factory {
                                 override fun <T : ViewModel> create(modelClass: Class<T>): T {
@@ -56,10 +55,24 @@ fun NavigationRoot(dao: CarDao) {
                                 }
                             }
                         )
-
                         CarDetailsScreen(
-                            viewModel = viewModel
+                            viewModel = viewModel,
+                            onServiceClick = { serviceType ->
+                                backStack.add(Route.ServiceHistory(key.car.id, serviceType))
+                            }
                         )
+                    }
+                }
+                is Route.ServiceHistory -> {
+                    NavEntry(key) {
+                        val viewModel = viewModel<ServiceHistoryViewModel>(
+                            factory = object : ViewModelProvider.Factory {
+                                override fun <T : ViewModel> create(modelClass: Class<T>): T {
+                                    return ServiceHistoryViewModel(dao, key.carId, key.serviceType) as T
+                                }
+                            }
+                        )
+                        ServiceHistoryScreen(viewModel = viewModel)
                     }
                 }
                 else -> error("Unknown NavKey: $key")

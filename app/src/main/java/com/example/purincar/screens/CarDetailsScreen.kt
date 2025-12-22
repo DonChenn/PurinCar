@@ -9,7 +9,6 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.text.KeyboardActions
 import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.filled.Add
 import androidx.compose.material.icons.filled.Edit
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
@@ -22,37 +21,26 @@ import androidx.compose.ui.text.input.ImeAction
 import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
-import com.example.purincar.data.MaintenanceRecord
 import com.example.purincar.ui.theme.PurinBrown
 import com.example.purincar.ui.theme.PurinYellow
 import com.example.purincar.viewmodels.CarDetailsViewModel
+import com.example.purincar.viewmodels.ServiceStatus
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun CarDetailsScreen(
-    viewModel: CarDetailsViewModel
+    viewModel: CarDetailsViewModel,
+    onServiceClick: (String) -> Unit
 ) {
     val car by viewModel.carInfo.collectAsState(initial = null)
-    var selectedServiceType by remember { mutableStateOf<String?>(null) }
+    val serviceStatuses by viewModel.serviceStatuses.collectAsState(initial = emptyList())
 
-    // State for mileage editing
     var isEditingMileage by remember { mutableStateOf(false) }
     var mileageInput by remember { mutableStateOf("") }
     val focusManager = LocalFocusManager.current
 
-    // Update local state when car data loads
     LaunchedEffect(car) {
-        car?.let {
-            mileageInput = it.currentMileage.toString()
-        }
-    }
-
-    if (selectedServiceType != null) {
-        ServiceDetailDialog(
-            serviceType = selectedServiceType!!,
-            viewModel = viewModel,
-            onDismiss = { selectedServiceType = null }
-        )
+        car?.let { mileageInput = it.currentMileage.toString() }
     }
 
     Column(
@@ -62,7 +50,6 @@ fun CarDetailsScreen(
             .padding(16.dp),
         horizontalAlignment = Alignment.CenterHorizontally
     ) {
-        // --- Header: Car Name and Editable Mileage ---
         Text(
             text = car?.name ?: "Loading...",
             fontSize = 32.sp,
@@ -81,13 +68,10 @@ fun CarDetailsScreen(
             if (isEditingMileage) {
                 OutlinedTextField(
                     value = mileageInput,
-                    onValueChange = { mileageInput = it.filter { char -> char.isDigit() } },
+                    onValueChange = { mileageInput = it.filter { c -> c.isDigit() } },
                     modifier = Modifier.width(120.dp),
                     singleLine = true,
-                    keyboardOptions = KeyboardOptions(
-                        keyboardType = KeyboardType.Number,
-                        imeAction = ImeAction.Done
-                    ),
+                    keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number, imeAction = ImeAction.Done),
                     keyboardActions = KeyboardActions(onDone = {
                         val newMileage = mileageInput.toIntOrNull()
                         if (newMileage != null && newMileage != car?.currentMileage) {
@@ -114,7 +98,7 @@ fun CarDetailsScreen(
                     fontWeight = FontWeight.Bold
                 )
                 IconButton(onClick = { isEditingMileage = true }) {
-                    Icon(Icons.Default.Edit, contentDescription = "Edit Mileage", tint = PurinBrown)
+                    Icon(Icons.Default.Edit, contentDescription = "Edit", tint = PurinBrown)
                 }
             }
         }
@@ -127,13 +111,10 @@ fun CarDetailsScreen(
             modifier = Modifier.fillMaxSize(),
             verticalArrangement = Arrangement.spacedBy(16.dp)
         ) {
-            items(viewModel.serviceTypes) { serviceType ->
-                val progress = viewModel.getProgressForType(serviceType, car?.currentMileage ?: 0)
-
-                ServiceTypeItem(
-                    name = serviceType,
-                    progress = progress,
-                    onClick = { selectedServiceType = serviceType }
+            items(serviceStatuses) { status ->
+                ServiceStatusItem(
+                    status = status,
+                    onClick = { onServiceClick(status.name) }
                 )
             }
         }
@@ -141,155 +122,54 @@ fun CarDetailsScreen(
 }
 
 @Composable
-fun ServiceTypeItem(
-    name: String,
-    progress: Float,
+fun ServiceStatusItem(
+    status: ServiceStatus,
     onClick: () -> Unit
 ) {
     Card(
         modifier = Modifier
             .fillMaxWidth()
-            .height(100.dp) // Large clickable area
             .clickable { onClick() },
         colors = CardDefaults.cardColors(containerColor = PurinBrown),
-        shape = RoundedCornerShape(16.dp) // Matching the rounded look
+        shape = RoundedCornerShape(16.dp)
     ) {
         Column(
             modifier = Modifier
                 .fillMaxSize()
-                .padding(16.dp),
-            verticalArrangement = Arrangement.Center
+                .padding(16.dp)
         ) {
-            Row(
-                modifier = Modifier.fillMaxWidth(),
-                horizontalArrangement = Arrangement.SpaceBetween
-            ) {
-                Text(
-                    text = name,
-                    fontSize = 20.sp,
-                    fontWeight = FontWeight.Bold,
-                    color = Color.White
-                )
-                Text(
-                    text = "${(progress * 100).toInt()}% Used",
-                    color = Color.White.copy(alpha = 0.8f)
-                )
-            }
+            Text(
+                text = status.name,
+                fontSize = 20.sp,
+                fontWeight = FontWeight.Bold,
+                color = Color.White
+            )
 
             Spacer(modifier = Modifier.height(12.dp))
 
+            Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) {
+                Text(text = "Mileage", color = Color.White.copy(alpha = 0.8f), fontSize = 12.sp)
+                Text(text = status.mileageText, color = Color.White.copy(alpha = 0.8f), fontSize = 12.sp)
+            }
             LinearProgressIndicator(
-                progress = { progress },
-                modifier = Modifier.fillMaxWidth().height(8.dp),
+                progress = { status.mileageProgress },
+                modifier = Modifier.fillMaxWidth().height(6.dp),
                 color = PurinYellow,
+                trackColor = Color.White.copy(alpha = 0.3f),
+            )
+
+            Spacer(modifier = Modifier.height(8.dp))
+
+            Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) {
+                Text(text = "Time", color = Color.White.copy(alpha = 0.8f), fontSize = 12.sp)
+                Text(text = status.timeText, color = Color.White.copy(alpha = 0.8f), fontSize = 12.sp)
+            }
+            LinearProgressIndicator(
+                progress = { status.timeProgress },
+                modifier = Modifier.fillMaxWidth().height(6.dp),
+                color = Color.Cyan.copy(alpha = 0.7f),
                 trackColor = Color.White.copy(alpha = 0.3f),
             )
         }
     }
-}
-
-@Composable
-fun ServiceDetailDialog(
-    serviceType: String,
-    viewModel: CarDetailsViewModel,
-    onDismiss: () -> Unit
-) {
-    val history by viewModel.getRecordsForType(serviceType).collectAsState(initial = emptyList())
-
-    var showAddForm by remember { mutableStateOf(false) }
-    var dateInput by remember { mutableStateOf("") }
-    var mileageInput by remember { mutableStateOf("") }
-
-    AlertDialog(
-        onDismissRequest = onDismiss,
-        title = { Text(text = serviceType) },
-        text = {
-            Column(
-                modifier = Modifier.fillMaxWidth().heightIn(max = 400.dp)
-            ) {
-                if (showAddForm) {
-                    Text("Add New Record", fontWeight = FontWeight.Bold)
-                    Spacer(modifier = Modifier.height(8.dp))
-                    OutlinedTextField(
-                        value = dateInput,
-                        onValueChange = { dateInput = it },
-                        label = { Text("Date (YYYY-MM-DD)") },
-                        modifier = Modifier.fillMaxWidth()
-                    )
-                    Spacer(modifier = Modifier.height(8.dp))
-                    OutlinedTextField(
-                        value = mileageInput,
-                        onValueChange = { mileageInput = it },
-                        label = { Text("Mileage") },
-                        keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number),
-                        modifier = Modifier.fillMaxWidth()
-                    )
-                    Spacer(modifier = Modifier.height(16.dp))
-                    Row(
-                        modifier = Modifier.fillMaxWidth(),
-                        horizontalArrangement = Arrangement.End
-                    ) {
-                        TextButton(onClick = { showAddForm = false }) { Text("Cancel") }
-                        Button(
-                            onClick = {
-                                val m = mileageInput.toIntOrNull()
-                                if (dateInput.isNotBlank() && m != null) {
-                                    viewModel.addRecord(serviceType, dateInput, m)
-                                    showAddForm = false
-                                    dateInput = ""
-                                    mileageInput = ""
-                                }
-                            },
-                            colors = ButtonDefaults.buttonColors(containerColor = PurinBrown)
-                        ) {
-                            Text("Save", color = Color.White)
-                        }
-                    }
-                } else {
-                    // Button to toggle add form
-                    Button(
-                        onClick = { showAddForm = true },
-                        modifier = Modifier.fillMaxWidth(),
-                        colors = ButtonDefaults.buttonColors(containerColor = PurinBrown)
-                    ) {
-                        Icon(Icons.Default.Add, contentDescription = null)
-                        Spacer(modifier = Modifier.width(8.dp))
-                        Text("Add Service Record")
-                    }
-
-                    Spacer(modifier = Modifier.height(16.dp))
-                    Text("History", fontWeight = FontWeight.Bold)
-                    Spacer(modifier = Modifier.height(8.dp))
-
-                    if (history.isEmpty()) {
-                        Text("No records found.", style = MaterialTheme.typography.bodyMedium)
-                    } else {
-                        LazyColumn {
-                            items(history) { record ->
-                                Card(
-                                    modifier = Modifier.fillMaxWidth().padding(vertical = 4.dp),
-                                    colors = CardDefaults.cardColors(containerColor = Color.LightGray.copy(alpha = 0.3f))
-                                ) {
-                                    Row(
-                                        modifier = Modifier.padding(12.dp).fillMaxWidth(),
-                                        horizontalArrangement = Arrangement.SpaceBetween
-                                    ) {
-                                        Text(record.date, fontWeight = FontWeight.Medium)
-                                        Text("${record.mileageAtService} mi")
-                                    }
-                                }
-                            }
-                        }
-                    }
-                }
-            }
-        },
-        confirmButton = {
-            if (!showAddForm) {
-                TextButton(onClick = onDismiss) {
-                    Text("Close")
-                }
-            }
-        }
-    )
 }
