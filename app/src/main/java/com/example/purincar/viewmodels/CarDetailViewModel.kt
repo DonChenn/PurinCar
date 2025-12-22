@@ -107,4 +107,59 @@ class CarDetailsViewModel(
             }
         }
     }
+
+    fun importCsv(csvContent: String) {
+        viewModelScope.launch {
+            val lines = csvContent.lines()
+            var maxMileageFound = 0
+
+            val currentCar = carInfo.firstOrNull()
+            if (currentCar != null) {
+                maxMileageFound = currentCar.currentMileage
+            }
+
+            val dataLines = if (lines.isNotEmpty() && lines[0].startsWith("Type")) lines.drop(1) else lines
+
+            dataLines.forEach { line ->
+                if (line.isBlank()) return@forEach
+
+                val parts = line.split(",")
+                if (parts.size >= 3) {
+                    val type = parts[0].trim()
+                    val date = parts[1].trim()
+                    val mileage = parts[2].trim().toIntOrNull() ?: 0
+
+                    if (mileage > maxMileageFound) {
+                        maxMileageFound = mileage
+                    }
+
+                    val appServiceType = serviceTypes.find { it.contains(type) }
+
+                    if (appServiceType != null) {
+                        val newRecord = MaintenanceRecord(
+                            carId = carId,
+                            serviceType = appServiceType,
+                            date = date,
+                            mileageAtService = mileage
+                        )
+                        dao.insertRecord(newRecord)
+                    }
+                }
+            }
+
+            if (currentCar != null && maxMileageFound > currentCar.currentMileage) {
+                dao.updateCar(currentCar.copy(currentMileage = maxMileageFound))
+            }
+        }
+    }
+
+    suspend fun generateCsvExport(): String {
+        val records = allRecords.first()
+        val sb = StringBuilder()
+        sb.append("Type,Date,Mileage\n")
+        records.forEach { record ->
+            sb.append("${record.serviceType},${record.date},${record.mileageAtService}\n")
+        }
+        return sb.toString()
+    }
 }

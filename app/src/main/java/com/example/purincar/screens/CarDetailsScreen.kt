@@ -1,5 +1,10 @@
 package com.example.purincar.screens
 
+import android.net.Uri
+import android.os.Build
+import androidx.activity.compose.rememberLauncherForActivityResult
+import androidx.activity.result.contract.ActivityResultContracts
+import androidx.annotation.RequiresApi
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
@@ -15,6 +20,7 @@ import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalFocusManager
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.ImeAction
@@ -25,7 +31,11 @@ import com.example.purincar.ui.theme.PurinBrown
 import com.example.purincar.ui.theme.PurinYellow
 import com.example.purincar.viewmodels.CarDetailsViewModel
 import com.example.purincar.viewmodels.ServiceStatus
+import kotlinx.coroutines.launch
+import java.io.BufferedReader
+import java.io.InputStreamReader
 
+@RequiresApi(Build.VERSION_CODES.O)
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun CarDetailsScreen(
@@ -38,6 +48,42 @@ fun CarDetailsScreen(
     var isEditingMileage by remember { mutableStateOf(false) }
     var mileageInput by remember { mutableStateOf("") }
     val focusManager = LocalFocusManager.current
+    val context = LocalContext.current
+    val scope = rememberCoroutineScope()
+
+    val importLauncher = rememberLauncherForActivityResult(
+        contract = ActivityResultContracts.GetContent()
+    ) { uri: Uri? ->
+        uri?.let {
+            try {
+                val content = context.contentResolver.openInputStream(it)?.use { inputStream ->
+                    BufferedReader(InputStreamReader(inputStream)).readText()
+                }
+                if (content != null) {
+                    viewModel.importCsv(content)
+                }
+            } catch (e: Exception) {
+                e.printStackTrace()
+            }
+        }
+    }
+
+    val exportLauncher = rememberLauncherForActivityResult(
+        contract = ActivityResultContracts.CreateDocument("text/csv")
+    ) { uri: Uri? ->
+        uri?.let {
+            scope.launch {
+                val csvData = viewModel.generateCsvExport()
+                try {
+                    context.contentResolver.openOutputStream(it)?.use { outputStream ->
+                        outputStream.write(csvData.toByteArray())
+                    }
+                } catch (e: Exception) {
+                    e.printStackTrace()
+                }
+            }
+        }
+    }
 
     LaunchedEffect(car) {
         car?.let { mileageInput = it.currentMileage.toString() }
@@ -103,7 +149,25 @@ fun CarDetailsScreen(
             }
         }
 
-        Spacer(modifier = Modifier.height(24.dp))
+        Spacer(modifier = Modifier.height(8.dp))
+
+        Row(horizontalArrangement = Arrangement.spacedBy(16.dp)) {
+            Button(
+                onClick = { importLauncher.launch("text/csv") },
+                colors = ButtonDefaults.buttonColors(containerColor = PurinBrown)
+            ) {
+                Text("Import CSV", color = Color.White)
+            }
+
+            Button(
+                onClick = { exportLauncher.launch("car_records_export.csv") },
+                colors = ButtonDefaults.buttonColors(containerColor = PurinBrown)
+            ) {
+                Text("Export CSV", color = Color.White)
+            }
+        }
+
+        Spacer(modifier = Modifier.height(16.dp))
         HorizontalDivider(color = PurinBrown)
         Spacer(modifier = Modifier.height(16.dp))
 
