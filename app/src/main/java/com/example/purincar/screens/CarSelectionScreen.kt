@@ -5,17 +5,22 @@ import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
-import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Add
+import androidx.compose.material.icons.filled.Delete
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Button
+import androidx.compose.material3.ButtonDefaults
+import androidx.compose.material3.Card
+import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.FloatingActionButton
 import androidx.compose.material3.Icon
+import androidx.compose.material3.IconButton
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.material3.TextField
@@ -45,6 +50,8 @@ fun CarSelectionScreen(
     var showDialog by remember { mutableStateOf(false) }
     var newCarInput by remember { mutableStateOf("") }
     var carMileage by remember { mutableStateOf("") }
+    var showDeleteDialog by remember { mutableStateOf(false) }
+    var carToDelete by remember { mutableStateOf<CarDetails?>(null) }
 
     if(cars.isNotEmpty()) {
         LazyColumn(
@@ -53,21 +60,39 @@ fun CarSelectionScreen(
                 .padding(16.dp, 64.dp, 16.dp, 64.dp),
         ) {
             items(cars.size) { currentCar ->
-                FloatingActionButton(
-                    onClick = ({
-                        onCarClick(cars[currentCar])
-                    }),
-                    containerColor = PurinBrown,
+                val car = cars[currentCar]
+
+                Card(
+                    onClick = { onCarClick(car) },
+                    colors = CardDefaults.cardColors(containerColor = PurinBrown),
                     modifier = Modifier
                         .fillMaxWidth()
                         .padding(8.dp)
-                        .size(128.dp),
+                        .height(100.dp)
                 ) {
-                    Text(
-                        text = cars[currentCar].name,
-                        fontSize = 24.sp,
-                        color = Color.White
-                    )
+                    Box(modifier = Modifier.fillMaxSize()) {
+                        Text(
+                            text = car.name,
+                            fontSize = 24.sp,
+                            color = Color.White,
+                            modifier = Modifier.align(Alignment.Center)
+                        )
+
+                        // Delete Button
+                        IconButton(
+                            onClick = {
+                                carToDelete = car
+                                showDeleteDialog = true
+                            },
+                            modifier = Modifier.align(Alignment.TopEnd)
+                        ) {
+                            Icon(
+                                imageVector = Icons.Default.Delete,
+                                contentDescription = "Delete Car",
+                                tint = Color.White
+                            )
+                        }
+                    }
                 }
             }
         }
@@ -133,6 +158,7 @@ fun CarSelectionScreen(
                             val car = CarDetails(name = newCarInput, currentMileage = carMileage.toInt())
                             viewModel.addCar(car)
                             newCarInput = ""
+                            carMileage = ""
                             showDialog = false
                         }
                     }
@@ -142,6 +168,31 @@ fun CarSelectionScreen(
             },
             dismissButton = {
                 TextButton(onClick = { showDialog = false }) {
+                    Text("Cancel")
+                }
+            }
+        )
+    }
+
+    if (showDeleteDialog) {
+        AlertDialog(
+            onDismissRequest = { showDeleteDialog = false },
+            title = { Text("Delete Car?") },
+            text = { Text("Are you sure you want to delete \"${carToDelete?.name}\"? All service records will be lost.") },
+            confirmButton = {
+                Button(
+                    onClick = {
+                        carToDelete?.let { viewModel.removeCar(it) }
+                        showDeleteDialog = false
+                        carToDelete = null
+                    },
+                    colors = ButtonDefaults.buttonColors(containerColor = Color.Red)
+                ) {
+                    Text("Delete", color = Color.White)
+                }
+            },
+            dismissButton = {
+                TextButton(onClick = { showDeleteDialog = false }) {
                     Text("Cancel")
                 }
             }

@@ -26,4 +26,10 @@ class ServiceHistoryViewModel(
             dao.insertRecord(newRecord)
         }
     }
+
+    fun removeRecord(record: MaintenanceRecord) {
+        viewModelScope.launch {
+            dao.deleteRecord(record)
+        }
+    }
 }

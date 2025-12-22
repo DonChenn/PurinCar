@@ -8,6 +8,7 @@ import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Add
+import androidx.compose.material.icons.filled.Delete
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
@@ -17,6 +18,7 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import com.example.purincar.data.MaintenanceRecord
 import com.example.purincar.ui.theme.PurinBrown
 import com.example.purincar.ui.theme.PurinYellow
 import com.example.purincar.viewmodels.ServiceHistoryViewModel
@@ -28,6 +30,8 @@ fun ServiceHistoryScreen(
 ) {
     val history by viewModel.history.collectAsState(initial = emptyList())
     var showAddDialog by remember { mutableStateOf(false) }
+    var showDeleteDialog by remember { mutableStateOf(false) }
+    var recordToDelete by remember { mutableStateOf<MaintenanceRecord?>(null) }
 
     Scaffold(
         floatingActionButton = {
@@ -72,10 +76,26 @@ fun ServiceHistoryScreen(
                         ) {
                             Row(
                                 modifier = Modifier.padding(16.dp).fillMaxWidth(),
-                                horizontalArrangement = Arrangement.SpaceBetween
+                                horizontalArrangement = Arrangement.SpaceBetween,
+                                verticalAlignment = Alignment.CenterVertically // Align items vertically
                             ) {
-                                Text(text = record.date, color = Color.White, fontSize = 16.sp)
-                                Text(text = "${record.mileageAtService} mi", color = Color.White, fontWeight = FontWeight.Bold)
+                                Column {
+                                    Text(text = record.date, color = Color.White, fontSize = 16.sp)
+                                    Text(text = "${record.mileageAtService} mi", color = Color.White, fontWeight = FontWeight.Bold)
+                                }
+
+                                IconButton(
+                                    onClick = {
+                                        recordToDelete = record
+                                        showDeleteDialog = true
+                                    }
+                                ) {
+                                    Icon(
+                                        imageVector = Icons.Default.Delete,
+                                        contentDescription = "Delete Record",
+                                        tint = Color.White
+                                    )
+                                }
                             }
                         }
                     }
@@ -124,6 +144,31 @@ fun ServiceHistoryScreen(
             },
             dismissButton = {
                 TextButton(onClick = { showAddDialog = false }) { Text("Cancel") }
+            }
+        )
+    }
+
+    if (showDeleteDialog) {
+        AlertDialog(
+            onDismissRequest = { showDeleteDialog = false },
+            title = { Text("Delete Record?") },
+            text = { Text("Are you sure you want to delete this service record?") },
+            confirmButton = {
+                Button(
+                    onClick = {
+                        recordToDelete?.let { viewModel.removeRecord(it) }
+                        showDeleteDialog = false
+                        recordToDelete = null
+                    },
+                    colors = ButtonDefaults.buttonColors(containerColor = Color.Red)
+                ) {
+                    Text("Delete", color = Color.White)
+                }
+            },
+            dismissButton = {
+                TextButton(onClick = { showDeleteDialog = false }) {
+                    Text("Cancel")
+                }
             }
         )
     }
