@@ -4,6 +4,7 @@ import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
+import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Add
@@ -32,7 +33,8 @@ fun ServiceHistoryScreen(
         floatingActionButton = {
             FloatingActionButton(
                 onClick = { showAddDialog = true },
-                containerColor = PurinBrown
+                containerColor = PurinBrown,
+                shape = CircleShape
             ) {
                 Icon(Icons.Default.Add, contentDescription = "Add Record", tint = Color.White)
             }
@@ -42,7 +44,6 @@ fun ServiceHistoryScreen(
             modifier = Modifier
                 .fillMaxSize()
                 .background(PurinYellow)
-                .padding(padding)
                 .padding(16.dp)
         ) {
             Text(
@@ -117,7 +118,6 @@ fun ServiceHistoryScreen(
                             showAddDialog = false
                         }
                     },
-                    colors = ButtonDefaults.buttonColors(containerColor = PurinBrown)
                 ) {
                     Text("Save", color = Color.White)
                 }
