@@ -1,5 +1,7 @@
 package com.example.purincar.screens
 
+import androidx.compose.foundation.ExperimentalFoundationApi
+import androidx.compose.foundation.combinedClickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -39,7 +41,7 @@ import com.example.purincar.ui.theme.PurinBrown
 import com.example.purincar.viewmodels.CarDetails
 import com.example.purincar.viewmodels.CarViewModel
 
-@OptIn(ExperimentalMaterial3Api::class)
+@OptIn(ExperimentalMaterial3Api::class, ExperimentalFoundationApi::class)
 @Composable
 fun CarSelectionScreen(
     viewModel: CarViewModel,
@@ -64,13 +66,26 @@ fun CarSelectionScreen(
             items(cars.size) { currentCar ->
                 val car = cars[currentCar]
 
+                var showDeleteButton by remember { mutableStateOf(false) }
+
                 Card(
-                    onClick = { onCarClick(car) },
                     colors = CardDefaults.cardColors(containerColor = PurinBrown),
                     modifier = Modifier
                         .fillMaxWidth()
                         .padding(8.dp)
                         .height(100.dp)
+                        .combinedClickable(
+                            onClick = {
+                                if (showDeleteButton) {
+                                    showDeleteButton = false
+                                } else {
+                                    onCarClick(car)
+                                }
+                            },
+                            onLongClick = {
+                                showDeleteButton = true
+                            }
+                        )
                 ) {
                     Box(modifier = Modifier.fillMaxSize()) {
                         Text(
@@ -81,18 +96,21 @@ fun CarSelectionScreen(
                         )
 
                         // Delete Button
-                        IconButton(
-                            onClick = {
-                                carToDelete = car
-                                showDeleteDialog = true
-                            },
-                            modifier = Modifier.align(Alignment.TopEnd)
-                        ) {
-                            Icon(
-                                imageVector = Icons.Default.Delete,
-                                contentDescription = "Delete Car",
-                                tint = Color.White
-                            )
+                        if (showDeleteButton) {
+                            IconButton(
+                                onClick = {
+                                    carToDelete = car
+                                    showDeleteDialog = true
+                                    showDeleteButton = false
+                                },
+                                modifier = Modifier.align(Alignment.TopEnd)
+                            ) {
+                                Icon(
+                                    imageVector = Icons.Default.Delete,
+                                    contentDescription = "Delete Car",
+                                    tint = Color.White
+                                )
+                            }
                         }
                     }
                 }

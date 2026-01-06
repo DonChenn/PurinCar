@@ -24,6 +24,7 @@ import com.example.purincar.ui.theme.PurinYellow
 import com.example.purincar.viewmodels.ServiceHistoryViewModel
 import android.app.DatePickerDialog
 import androidx.compose.foundation.clickable
+import androidx.compose.foundation.combinedClickable
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.material.icons.filled.DateRange
 import java.util.Calendar
@@ -76,31 +77,48 @@ fun ServiceHistoryScreen(
                     verticalArrangement = Arrangement.spacedBy(8.dp)
                 ) {
                     items(history) { record ->
+
+                        var showDeleteButton by remember { mutableStateOf(false) }
+
                         Card(
-                            modifier = Modifier.fillMaxWidth(),
-                            colors = CardDefaults.cardColors(containerColor = PurinBrown)
+                            colors = CardDefaults.cardColors(containerColor = PurinBrown),
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .combinedClickable(
+                                    onClick = {
+                                        if (showDeleteButton) {
+                                            showDeleteButton = false
+                                        }
+                                    },
+                                    onLongClick = {
+                                        showDeleteButton = true
+                                    }
+                                )
                         ) {
-                            Row(
-                                modifier = Modifier.padding(16.dp).fillMaxWidth(),
-                                horizontalArrangement = Arrangement.SpaceBetween,
-                                verticalAlignment = Alignment.CenterVertically // Align items vertically
-                            ) {
-                                Column {
+                            Box(modifier = Modifier.fillMaxWidth().padding(16.dp)) {
+
+                                Column(modifier = Modifier.align(Alignment.CenterStart)) {
                                     Text(text = record.date, color = Color.White, fontSize = 16.sp)
                                     Text(text = "${record.mileageAtService} miles", color = Color.White, fontWeight = FontWeight.Bold)
                                 }
 
-                                IconButton(
-                                    onClick = {
-                                        recordToDelete = record
-                                        showDeleteDialog = true
+                                if (showDeleteButton) {
+                                    IconButton(
+                                        onClick = {
+                                            recordToDelete = record
+                                            showDeleteDialog = true
+                                            showDeleteButton = false
+                                        },
+                                        modifier = Modifier
+                                            .align(Alignment.TopEnd)
+                                            .offset(x = 12.dp, y = (-12).dp)
+                                    ) {
+                                        Icon(
+                                            imageVector = Icons.Default.Delete,
+                                            contentDescription = "Delete Record",
+                                            tint = Color.White
+                                        )
                                     }
-                                ) {
-                                    Icon(
-                                        imageVector = Icons.Default.Delete,
-                                        contentDescription = "Delete Record",
-                                        tint = Color.White
-                                    )
                                 }
                             }
                         }
