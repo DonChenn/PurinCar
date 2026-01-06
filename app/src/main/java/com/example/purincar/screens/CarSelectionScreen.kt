@@ -53,6 +53,8 @@ fun CarSelectionScreen(
     var showDeleteDialog by remember { mutableStateOf(false) }
     var carToDelete by remember { mutableStateOf<CarDetails?>(null) }
 
+    // Car list
+
     if(cars.isNotEmpty()) {
         LazyColumn(
             horizontalAlignment = Alignment.CenterHorizontally,
@@ -129,6 +131,8 @@ fun CarSelectionScreen(
             )
         }
     }
+
+    // Add a car alert dialog
 
     if(showDialog) {
         AlertDialog(

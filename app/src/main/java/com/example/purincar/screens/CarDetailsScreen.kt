@@ -105,6 +105,8 @@ fun CarDetailsScreen(
 
         Spacer(modifier = Modifier.height(8.dp))
 
+        // Mileage Updater
+
         Row(
             verticalAlignment = Alignment.CenterVertically,
             horizontalArrangement = Arrangement.Center
@@ -154,6 +156,8 @@ fun CarDetailsScreen(
         }
 
         Spacer(modifier = Modifier.height(8.dp))
+
+        // CSV Buttons
 
         Row(horizontalArrangement = Arrangement.spacedBy(16.dp)) {
             Button(
@@ -215,6 +219,8 @@ fun ServiceStatusItem(
 
             Spacer(modifier = Modifier.height(12.dp))
 
+            // Mileage Progress Bar
+
             Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) {
                 Text(text = "Mileage", color = Color.White, fontSize = 12.sp)
                 Text(text = status.mileageText, color = Color.White, fontSize = 12.sp)
@@ -231,6 +237,8 @@ fun ServiceStatusItem(
             )
 
             Spacer(modifier = Modifier.height(8.dp))
+
+            // Time Progress Bar
 
             Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) {
                 Text(text = "Time", color = Color.White, fontSize = 12.sp)

@@ -22,6 +22,11 @@ import com.example.purincar.data.MaintenanceRecord
 import com.example.purincar.ui.theme.PurinBrown
 import com.example.purincar.ui.theme.PurinYellow
 import com.example.purincar.viewmodels.ServiceHistoryViewModel
+import android.app.DatePickerDialog
+import androidx.compose.foundation.clickable
+import androidx.compose.ui.platform.LocalContext
+import androidx.compose.material.icons.filled.DateRange
+import java.util.Calendar
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -29,6 +34,7 @@ fun ServiceHistoryScreen(
     viewModel: ServiceHistoryViewModel
 ) {
     val history by viewModel.history.collectAsState(initial = emptyList())
+    val currentCarMileage by viewModel.currentMileage.collectAsState(initial = 0)
     var showAddDialog by remember { mutableStateOf(false) }
     var showDeleteDialog by remember { mutableStateOf(false) }
     var recordToDelete by remember { mutableStateOf<MaintenanceRecord?>(null) }
@@ -108,6 +114,26 @@ fun ServiceHistoryScreen(
         var dateInput by remember { mutableStateOf("") }
         var mileageInput by remember { mutableStateOf("") }
 
+        // Date Calendar Formatting
+
+        val context = LocalContext.current
+        val calendar = Calendar.getInstance()
+
+        val datePickerDialog = DatePickerDialog(
+            context,
+            { _, year, month, dayOfMonth ->
+                val formattedDate = "$year-${(month + 1).toString()
+                    .padStart(2, '0')}-${dayOfMonth.toString()
+                        .padStart(2, '0')}"
+                dateInput = formattedDate
+            },
+            calendar.get(Calendar.YEAR),
+            calendar.get(Calendar.MONTH),
+            calendar.get(Calendar.DAY_OF_MONTH)
+        )
+
+        // Add service record alert dialog
+
         AlertDialog(
             onDismissRequest = { showAddDialog = false },
             title = { Text("Add Service Record") },
@@ -115,17 +141,32 @@ fun ServiceHistoryScreen(
                 Column {
                     OutlinedTextField(
                         value = dateInput,
-                        onValueChange = { dateInput = it },
+                        onValueChange = { },
                         label = { Text("Date (YYYY-MM-DD)") },
-                        modifier = Modifier.fillMaxWidth()
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .clickable { datePickerDialog.show() },
+                        enabled = false,
+                        colors = OutlinedTextFieldDefaults.colors(
+                            disabledTextColor = MaterialTheme.colorScheme.onSurface,
+                            disabledBorderColor = MaterialTheme.colorScheme.outline,
+                            disabledLabelColor = MaterialTheme.colorScheme.onSurfaceVariant
+                        ),
+                        trailingIcon = {
+                            IconButton(onClick = { datePickerDialog.show() }) {
+                                Icon(Icons.Default.DateRange, contentDescription = "Select Date")
+                            }
+                        }
                     )
+
                     Spacer(modifier = Modifier.height(8.dp))
                     OutlinedTextField(
                         value = mileageInput,
                         onValueChange = { mileageInput = it },
-                        label = { Text("Mileage") },
+                        label = { Text("Mileage")},
                         keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number),
-                        modifier = Modifier.fillMaxWidth()
+                        modifier = Modifier.fillMaxWidth(),
+                        placeholder = { Text(currentCarMileage.toString())}
                     )
                 }
             },

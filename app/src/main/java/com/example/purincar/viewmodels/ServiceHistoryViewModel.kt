@@ -6,6 +6,7 @@ import com.example.purincar.data.CarDao
 import com.example.purincar.data.MaintenanceRecord
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.launch
+import kotlinx.coroutines.flow.map
 
 class ServiceHistoryViewModel(
     private val dao: CarDao,
@@ -14,6 +15,9 @@ class ServiceHistoryViewModel(
 ) : ViewModel() {
 
     val history: Flow<List<MaintenanceRecord>> = dao.getRecordsForType(carId, serviceType)
+    val currentMileage: Flow<Int> = dao.getAllCars().map { cars ->
+        cars.find { it.id == carId }?.currentMileage ?: 0
+    }
 
     fun addRecord(date: String, mileage: Int) {
         viewModelScope.launch {
