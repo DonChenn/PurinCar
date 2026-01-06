@@ -138,24 +138,30 @@ class CarDetailsViewModel(
             dataLines.forEach { line ->
                 if (line.isBlank()) return@forEach
 
-                val parts = line.split(",")
+                val parts = line.split(",(?=(?:[^\"]*\"[^\"]*\")*[^\"]*$)".toRegex())
+
                 if (parts.size >= 3) {
                     val type = parts[0].trim()
                     val date = parts[1].trim()
                     val mileage = parts[2].trim().toIntOrNull() ?: 0
+                    var description = if (parts.size >= 4) parts[3].trim() else ""
+                    description = description.removeSurrounding("\"").replace("\"\"", "\"")
 
                     if (mileage > maxMileageFound) {
                         maxMileageFound = mileage
                     }
 
-                    val appServiceType = serviceTypes.find { it.contains(type) }
+                    val appServiceType = serviceTypes.find {
+                        it.equals(type, ignoreCase = true) || it.contains(type, ignoreCase = true)
+                    }
 
                     if (appServiceType != null) {
                         val newRecord = MaintenanceRecord(
                             carId = carId,
                             serviceType = appServiceType,
                             date = date,
-                            mileageAtService = mileage
+                            mileageAtService = mileage,
+                            description = description
                         )
                         dao.insertRecord(newRecord)
                     }
@@ -171,9 +177,15 @@ class CarDetailsViewModel(
     suspend fun generateCsvExport(): String {
         val records = allRecords.first()
         val sb = StringBuilder()
-        sb.append("Type,Date,Mileage\n")
+        sb.append("Type,Date,Mileage,Description\n") // Update Header
+
         records.forEach { record ->
-            sb.append("${record.serviceType},${record.date},${record.mileageAtService}\n")
+            var desc = record.description.replace("\"", "\"\"") // Escape quotes
+            if (desc.contains(",")) {
+                desc = "\"$desc\"" // Wrap in quotes
+            }
+
+            sb.append("${record.serviceType},${record.date},${record.mileageAtService},$desc\n")
         }
         return sb.toString()
     }

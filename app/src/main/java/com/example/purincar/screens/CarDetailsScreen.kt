@@ -161,7 +161,7 @@ fun CarDetailsScreen(
 
         Row(horizontalArrangement = Arrangement.spacedBy(16.dp)) {
             Button(
-                onClick = { importLauncher.launch("text/csv") },
+                onClick = { importLauncher.launch("*/*") },
                 colors = ButtonDefaults.buttonColors(containerColor = PurinBrown)
             ) {
                 Text("Import CSV", color = Color.White)
