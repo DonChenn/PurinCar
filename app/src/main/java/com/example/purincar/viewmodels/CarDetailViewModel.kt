@@ -138,6 +138,7 @@ class CarDetailsViewModel(
             dataLines.forEach { line ->
                 if (line.isBlank()) return@forEach
 
+                // allows commas in descriptions
                 val parts = line.split(",(?=(?:[^\"]*\"[^\"]*\")*[^\"]*$)".toRegex())
 
                 if (parts.size >= 3) {
@@ -177,12 +178,12 @@ class CarDetailsViewModel(
     suspend fun generateCsvExport(): String {
         val records = allRecords.first()
         val sb = StringBuilder()
-        sb.append("Type,Date,Mileage,Description\n") // Update Header
+        sb.append("Type,Date,Mileage,Description\n")
 
         records.forEach { record ->
-            var desc = record.description.replace("\"", "\"\"") // Escape quotes
+            var desc = record.description.replace("\"", "\"\"")
             if (desc.contains(",")) {
-                desc = "\"$desc\"" // Wrap in quotes
+                desc = "\"$desc\""
             }
 
             sb.append("${record.serviceType},${record.date},${record.mileageAtService},$desc\n")
