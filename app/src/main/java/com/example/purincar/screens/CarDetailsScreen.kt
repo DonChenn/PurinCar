@@ -222,7 +222,11 @@ fun ServiceStatusItem(
             LinearProgressIndicator(
                 progress = { status.mileageProgress },
                 modifier = Modifier.fillMaxWidth().height(6.dp),
-                color = PurinYellow,
+                color = when {
+                    status.mileageProgress > 0.9f -> Color.Red
+                    status.mileageProgress > 0.6f -> Color.Yellow
+                    else -> Color.Green
+                },
                 trackColor = Color.White.copy(alpha = 0.3f),
             )
 
@@ -235,7 +239,11 @@ fun ServiceStatusItem(
             LinearProgressIndicator(
                 progress = { status.timeProgress },
                 modifier = Modifier.fillMaxWidth().height(6.dp),
-                color = PurinYellow,
+                color = when {
+                    status.timeProgress > 0.9f -> Color.Red
+                    status.timeProgress > 0.6 -> Color.Yellow
+                    else -> Color.Green
+                },
                 trackColor = Color.White.copy(alpha = 0.3f),
             )
         }
