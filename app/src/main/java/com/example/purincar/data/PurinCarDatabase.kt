@@ -25,7 +25,8 @@ data class MaintenanceRecord(
     val carId: Int,
     val serviceType: String,
     val date: String,
-    val mileageAtService: Int
+    val mileageAtService: Int,
+    val description: String = ""
 )
 
 @Dao
@@ -55,7 +56,7 @@ interface CarDao {
     suspend fun deleteRecord(record: MaintenanceRecord)
 }
 
-@Database(entities = [CarEntity::class, MaintenanceRecord::class], version = 1)
+@Database(entities = [CarEntity::class, MaintenanceRecord::class], version = 2)
 abstract class PurinCarDatabase : RoomDatabase() {
     abstract fun carDao(): CarDao
 
@@ -66,6 +67,7 @@ abstract class PurinCarDatabase : RoomDatabase() {
         fun getDatabase(context: Context): PurinCarDatabase {
             return Instance ?: synchronized(this) {
                 Room.databaseBuilder(context, PurinCarDatabase::class.java, "purin_car_db")
+                    .fallbackToDestructiveMigration(false)
                     .build()
                     .also { Instance = it }
             }

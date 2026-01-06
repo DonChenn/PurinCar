@@ -220,40 +220,48 @@ fun ServiceStatusItem(
             Spacer(modifier = Modifier.height(12.dp))
 
             // Mileage Progress Bar
-
-            Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) {
-                Text(text = "Mileage", color = Color.White, fontSize = 12.sp)
-                Text(text = status.mileageText, color = Color.White, fontSize = 12.sp)
+            if (status.mileageProgress >= 0f) {
+                Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) {
+                    Text(text = "Mileage", color = Color.White, fontSize = 12.sp)
+                    Text(text = status.mileageText, color = Color.White, fontSize = 12.sp)
+                }
+                LinearProgressIndicator(
+                    progress = { status.mileageProgress },
+                    modifier = Modifier.fillMaxWidth().height(6.dp),
+                    color = when {
+                        status.mileageProgress > 0.9f -> Color.Red
+                        status.mileageProgress > 0.6f -> Color.Yellow
+                        else -> Color.Green
+                    },
+                    trackColor = Color.White.copy(alpha = 0.3f),
+                )
+            } else {
+                Spacer(modifier = Modifier.height(6.dp))
             }
-            LinearProgressIndicator(
-                progress = { status.mileageProgress },
-                modifier = Modifier.fillMaxWidth().height(6.dp),
-                color = when {
-                    status.mileageProgress > 0.9f -> Color.Red
-                    status.mileageProgress > 0.6f -> Color.Yellow
-                    else -> Color.Green
-                },
-                trackColor = Color.White.copy(alpha = 0.3f),
-            )
 
             Spacer(modifier = Modifier.height(8.dp))
 
             // Time Progress Bar
 
-            Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) {
-                Text(text = "Time", color = Color.White, fontSize = 12.sp)
-                Text(text = status.timeText, color = Color.White, fontSize = 12.sp)
+            if (status.timeProgress >= 0f) {
+                Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) {
+                    Text(text = "Time", color = Color.White, fontSize = 12.sp)
+                    Text(text = status.timeText, color = Color.White, fontSize = 12.sp)
+                }
+
+                LinearProgressIndicator(
+                    progress = { status.timeProgress },
+                    modifier = Modifier.fillMaxWidth().height(6.dp),
+                    color = when {
+                        status.timeProgress > 0.9f -> Color.Red
+                        status.timeProgress > 0.6f -> Color.Yellow
+                        else -> Color.Green
+                    },
+                    trackColor = Color.White.copy(alpha = 0.3f),
+                )
+            } else {
+                Spacer(modifier = Modifier.height(6.dp))
             }
-            LinearProgressIndicator(
-                progress = { status.timeProgress },
-                modifier = Modifier.fillMaxWidth().height(6.dp),
-                color = when {
-                    status.timeProgress > 0.9f -> Color.Red
-                    status.timeProgress > 0.6 -> Color.Yellow
-                    else -> Color.Green
-                },
-                trackColor = Color.White.copy(alpha = 0.3f),
-            )
         }
     }
 }

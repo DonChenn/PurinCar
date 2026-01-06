@@ -100,6 +100,16 @@ fun ServiceHistoryScreen(
                                 Column(modifier = Modifier.align(Alignment.CenterStart)) {
                                     Text(text = record.date, color = Color.White, fontSize = 16.sp)
                                     Text(text = "${record.mileageAtService} miles", color = Color.White, fontWeight = FontWeight.Bold)
+
+                                    if (record.description.isNotBlank()) {
+                                        Spacer(modifier = Modifier.height(4.dp))
+                                        Text(
+                                            text = record.description,
+                                            color = Color.White.copy(alpha = 0.8f),
+                                            fontSize = 14.sp,
+                                            fontStyle = androidx.compose.ui.text.font.FontStyle.Italic
+                                        )
+                                    }
                                 }
 
                                 if (showDeleteButton) {
@@ -131,6 +141,7 @@ fun ServiceHistoryScreen(
     if (showAddDialog) {
         var dateInput by remember { mutableStateOf("") }
         var mileageInput by remember { mutableStateOf("") }
+        var descriptionInput by remember { mutableStateOf("") }
 
         // Date Calendar Formatting
 
@@ -186,6 +197,15 @@ fun ServiceHistoryScreen(
                         modifier = Modifier.fillMaxWidth(),
                         placeholder = { Text(currentCarMileage.toString())}
                     )
+
+                    Spacer(modifier = Modifier.height(8.dp))
+                    OutlinedTextField(
+                        value = descriptionInput,
+                        onValueChange = { descriptionInput = it },
+                        label = { Text("Description (Notes, Parts, etc.)") },
+                        modifier = Modifier.fillMaxWidth(),
+                        maxLines = 3
+                    )
                 }
             },
             confirmButton = {
@@ -193,7 +213,7 @@ fun ServiceHistoryScreen(
                     onClick = {
                         val m = mileageInput.toIntOrNull()
                         if (dateInput.isNotBlank() && m != null) {
-                            viewModel.addRecord(dateInput, m)
+                            viewModel.addRecord(dateInput, m, descriptionInput)
                             showAddDialog = false
                         }
                     },

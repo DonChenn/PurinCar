@@ -34,6 +34,7 @@ class CarDetailsViewModel(
         "Battery Fan",
         "Transmission Fluid",
         "Spark Plugs",
+        "Miscellaneous"
     )
 
     private val mileageIntervals = mapOf(
@@ -44,6 +45,7 @@ class CarDetailsViewModel(
         "Battery Fan" to 30000,
         "Transmission Fluid" to 60000,
         "Spark Plugs" to 100000,
+        "Miscellaneous" to 0,
     )
 
     private val timeIntervals = mapOf(
@@ -54,7 +56,8 @@ class CarDetailsViewModel(
         "Battery Fan" to 1095,
         "Transmission Fluid" to 1460,
         "Spark Plugs" to 1825,
-    )
+        "Miscellaneous" to 0,
+        )
 
     val carInfo: Flow<CarEntity?> = dao.getAllCars().map { list ->
         list.find { it.id == carId }
@@ -78,8 +81,11 @@ class CarDetailsViewModel(
             val lastMileage = lastRecord?.mileageAtService ?: 0
             val mInterval = mileageIntervals[type] ?: 5000
             val mDriven = (currentMileage - lastMileage).coerceAtLeast(0)
-            val mProgress = (mDriven.toFloat() / mInterval.toFloat()).coerceIn(0f, 1f)
-
+            val mProgress = if (mInterval > 0) {
+                (mDriven.toFloat() / mInterval.toFloat()).coerceIn(0f, 1f)
+            } else {
+                -1f
+            }
             val lastDateStr = lastRecord?.date
             val daysElapsed = if (lastDateStr != null) {
                 try {
@@ -92,7 +98,11 @@ class CarDetailsViewModel(
                 0
             }
             val tInterval = timeIntervals[type] ?: 365
-            val tProgress = (daysElapsed.toFloat() / tInterval.toFloat()).coerceIn(0f, 1f)
+            val tProgress = if (tInterval > 0) {
+                (daysElapsed.toFloat() / tInterval.toFloat()).coerceIn(0f, 1f)
+            } else {
+                -1f
+            }
 
             ServiceStatus(
                 name = type,
