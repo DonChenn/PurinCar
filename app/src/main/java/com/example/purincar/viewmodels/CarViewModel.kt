@@ -35,7 +35,13 @@ class CarViewModel(private val dao: CarDao) : ViewModel() {
 
     fun removeCar(car: CarDetails) {
         viewModelScope.launch {
-            dao.deleteCar(CarEntity(id = car.id, name = car.name, currentMileage = car.currentMileage))
+            dao.deleteCar(
+                CarEntity(
+                    id = car.id,
+                    name = car.name,
+                    currentMileage = car.currentMileage
+                )
+            )
         }
     }
 }

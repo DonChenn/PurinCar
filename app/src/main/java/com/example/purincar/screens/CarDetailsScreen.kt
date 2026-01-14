@@ -47,46 +47,100 @@ fun CarDetailsScreen(
                 NavigationBarItem(
                     selected = selectedTab == 0,
                     onClick = { selectedTab = 0 },
-                    icon = { Icon(Icons.Default.Info, contentDescription = "Status", tint = Color.White) },
+                    icon = {
+                        Icon(
+                            Icons.Default.Info,
+                            contentDescription = "Status",
+                            tint = Color.White
+                        )
+                    },
                     label = { Text("Status", color = Color.White) },
-                    colors = NavigationBarItemDefaults.colors(indicatorColor = Color.Black.copy(alpha = 0.2f))
+                    colors = NavigationBarItemDefaults.colors(
+                        indicatorColor = Color.Black.copy(
+                            alpha = 0.2f
+                        )
+                    )
                 )
                 NavigationBarItem(
                     selected = selectedTab == 1,
                     onClick = { selectedTab = 1 },
-                    icon = { Icon(Icons.AutoMirrored.Filled.List, contentDescription = "Records", tint = Color.White) },
+                    icon = {
+                        Icon(
+                            Icons.AutoMirrored.Filled.List,
+                            contentDescription = "Records",
+                            tint = Color.White
+                        )
+                    },
                     label = { Text("Records", color = Color.White) },
-                    colors = NavigationBarItemDefaults.colors(indicatorColor = Color.Black.copy(alpha = 0.2f))
+                    colors = NavigationBarItemDefaults.colors(
+                        indicatorColor = Color.Black.copy(
+                            alpha = 0.2f
+                        )
+                    )
                 )
             }
         }
     ) { paddingValues ->
-        Box(modifier = Modifier.fillMaxSize().padding(paddingValues)) {
-            if (selectedTab == 0) VehicleStatusTab(car) else ServiceRecordsTab(car, serviceStatuses, viewModel, onServiceClick)
+        Box(modifier = Modifier
+            .fillMaxSize()
+            .padding(paddingValues)) {
+            if (selectedTab == 0) VehicleStatusTab(car) else ServiceRecordsTab(
+                car,
+                serviceStatuses,
+                viewModel,
+                onServiceClick
+            )
         }
     }
 }
 
 @Composable
 fun CarHeader(car: CarEntity?) {
-    Column(horizontalAlignment = Alignment.CenterHorizontally, modifier = Modifier.fillMaxWidth().padding(bottom = 16.dp)) {
-        Text(text = car?.name ?: "Loading...", fontSize = 28.sp, color = PurinBrown, fontWeight = FontWeight.Bold, lineHeight = 32.sp)
-        Text(text = "Odometer: ${car?.currentMileage ?: 0} miles", fontSize = 20.sp, fontWeight = FontWeight.Bold, color = Color.Black)
+    Column(
+        horizontalAlignment = Alignment.CenterHorizontally,
+        modifier = Modifier
+            .fillMaxWidth()
+            .padding(bottom = 16.dp)
+    ) {
+        Text(
+            text = car?.name ?: "Loading...",
+            fontSize = 28.sp,
+            color = PurinBrown,
+            fontWeight = FontWeight.Bold,
+            lineHeight = 32.sp
+        )
+        Text(
+            text = "Odometer: ${car?.currentMileage ?: 0} miles",
+            fontSize = 20.sp,
+            fontWeight = FontWeight.Bold,
+            color = Color.Black
+        )
     }
 }
 
 @Composable
 fun VehicleStatusTab(car: CarEntity?) {
     Column(
-        modifier = Modifier.fillMaxSize().padding(start = 16.dp, end = 16.dp, bottom = 16.dp),
+        modifier = Modifier
+            .fillMaxSize()
+            .padding(start = 16.dp, end = 16.dp, bottom = 16.dp),
         horizontalAlignment = Alignment.CenterHorizontally,
         verticalArrangement = Arrangement.spacedBy(16.dp)
     ) {
         CarHeader(car)
 
-        Card(colors = CardDefaults.cardColors(containerColor = PurinBrown), elevation = CardDefaults.cardElevation(2.dp), modifier = Modifier.fillMaxWidth()) {
+        Card(
+            colors = CardDefaults.cardColors(containerColor = PurinBrown),
+            elevation = CardDefaults.cardElevation(2.dp),
+            modifier = Modifier.fillMaxWidth()
+        ) {
             Column(modifier = Modifier.padding(16.dp)) {
-                Text(text = "Vehicle Health", fontSize = 20.sp, fontWeight = FontWeight.Bold, color = Color.White)
+                Text(
+                    text = "Vehicle Health",
+                    fontSize = 20.sp,
+                    fontWeight = FontWeight.Bold,
+                    color = Color.White
+                )
                 Spacer(modifier = Modifier.height(16.dp))
 
                 Row(modifier = Modifier.fillMaxWidth()) {
@@ -94,7 +148,11 @@ fun VehicleStatusTab(car: CarEntity?) {
                         StatusItem("Doors", if (car?.isLocked == true) "Locked" else "Unlocked")
                     }
                     Box(modifier = Modifier.weight(1f), contentAlignment = Alignment.CenterEnd) {
-                        StatusItem("Fuel", "${((car?.fuelPercent ?: 0.0) * 100).toInt()}%", isRightAligned = true)
+                        StatusItem(
+                            "Fuel",
+                            "${((car?.fuelPercent ?: 0.0) * 100).toInt()}%",
+                            isRightAligned = true
+                        )
                     }
                 }
                 Spacer(modifier = Modifier.height(16.dp))
@@ -104,24 +162,75 @@ fun VehicleStatusTab(car: CarEntity?) {
 }
 
 @Composable
-fun ServiceRecordsTab(car: CarEntity?, serviceStatuses: List<ServiceStatus>, viewModel: CarDetailsViewModel, onServiceClick: (String) -> Unit) {
+fun ServiceRecordsTab(
+    car: CarEntity?,
+    serviceStatuses: List<ServiceStatus>,
+    viewModel: CarDetailsViewModel,
+    onServiceClick: (String) -> Unit
+) {
     val context = LocalContext.current
     val scope = rememberCoroutineScope()
-    val importLauncher = rememberLauncherForActivityResult(contract = ActivityResultContracts.GetContent()) { uri: Uri? -> uri?.let { try { context.contentResolver.openInputStream(it)?.use { inputStream -> viewModel.importCsv(BufferedReader(InputStreamReader(inputStream)).readText()) } } catch (e: Exception) { e.printStackTrace() } } }
-    val exportLauncher = rememberLauncherForActivityResult(contract = ActivityResultContracts.CreateDocument("text/csv")) { uri: Uri? -> uri?.let { scope.launch { val csvData = viewModel.generateCsvExport(); try { context.contentResolver.openOutputStream(it)?.use { outputStream -> outputStream.write(csvData.toByteArray()) } } catch (e: Exception) { e.printStackTrace() } } } }
-
-    LazyColumn(modifier = Modifier.fillMaxSize().padding(start = 16.dp, end = 16.dp, bottom = 16.dp)) {
-        item { CarHeader(car) }
-        item {
-            Column(horizontalAlignment = Alignment.CenterHorizontally, modifier = Modifier.fillMaxWidth()) {
-                Row(horizontalArrangement = Arrangement.spacedBy(16.dp)) {
-                    Button(onClick = { importLauncher.launch("*/*") }, colors = ButtonDefaults.buttonColors(containerColor = PurinBrown)) { Text("Import CSV", color = Color.White) }
-                    Button(onClick = { exportLauncher.launch("car_records_export.csv") }, colors = ButtonDefaults.buttonColors(containerColor = PurinBrown)) { Text("Export CSV", color = Color.White) }
+    val importLauncher =
+        rememberLauncherForActivityResult(contract = ActivityResultContracts.GetContent()) { uri: Uri? ->
+            uri?.let {
+                try {
+                    context.contentResolver.openInputStream(it)?.use { inputStream ->
+                        viewModel.importCsv(
+                            BufferedReader(
+                                InputStreamReader(inputStream)
+                            ).readText()
+                        )
+                    }
+                } catch (e: Exception) {
+                    e.printStackTrace()
                 }
-                Spacer(modifier = Modifier.height(16.dp)); HorizontalDivider(color = PurinBrown); Spacer(modifier = Modifier.height(16.dp))
             }
         }
-        items(serviceStatuses) { status -> ServiceStatusItem(status = status, onClick = { onServiceClick(status.name) }); Spacer(modifier = Modifier.height(16.dp)) }
+    val exportLauncher =
+        rememberLauncherForActivityResult(contract = ActivityResultContracts.CreateDocument("text/csv")) { uri: Uri? ->
+            uri?.let {
+                scope.launch {
+                    val csvData = viewModel.generateCsvExport(); try {
+                    context.contentResolver.openOutputStream(it)
+                        ?.use { outputStream -> outputStream.write(csvData.toByteArray()) }
+                } catch (e: Exception) {
+                    e.printStackTrace()
+                }
+                }
+            }
+        }
+
+    LazyColumn(
+        modifier = Modifier
+            .fillMaxSize()
+            .padding(start = 16.dp, end = 16.dp, bottom = 16.dp)
+    ) {
+        item { CarHeader(car) }
+        item {
+            Column(
+                horizontalAlignment = Alignment.CenterHorizontally,
+                modifier = Modifier.fillMaxWidth()
+            ) {
+                Row(horizontalArrangement = Arrangement.spacedBy(16.dp)) {
+                    Button(
+                        onClick = { importLauncher.launch("*/*") },
+                        colors = ButtonDefaults.buttonColors(containerColor = PurinBrown)
+                    ) { Text("Import CSV", color = Color.White) }
+                    Button(
+                        onClick = { exportLauncher.launch("car_records_export.csv") },
+                        colors = ButtonDefaults.buttonColors(containerColor = PurinBrown)
+                    ) { Text("Export CSV", color = Color.White) }
+                }
+                Spacer(modifier = Modifier.height(16.dp)); HorizontalDivider(color = PurinBrown); Spacer(
+                modifier = Modifier.height(16.dp)
+            )
+            }
+        }
+        items(serviceStatuses) { status ->
+            ServiceStatusItem(
+                status = status,
+                onClick = { onServiceClick(status.name) }); Spacer(modifier = Modifier.height(16.dp))
+        }
     }
 }
 
@@ -151,18 +260,56 @@ fun StatusItem(label: String, value: String, isRightAligned: Boolean = false) {
 
 @Composable
 fun ServiceStatusItem(status: ServiceStatus, onClick: () -> Unit) {
-    Card(modifier = Modifier.fillMaxWidth().clickable { onClick() }, colors = CardDefaults.cardColors(containerColor = PurinBrown), shape = RoundedCornerShape(16.dp)) {
+    Card(
+        modifier = Modifier
+            .fillMaxWidth()
+            .clickable { onClick() },
+        colors = CardDefaults.cardColors(containerColor = PurinBrown),
+        shape = RoundedCornerShape(16.dp)
+    ) {
         Column(modifier = Modifier.padding(16.dp)) {
             Text(status.name, fontSize = 20.sp, fontWeight = FontWeight.Bold, color = Color.White)
             Spacer(modifier = Modifier.height(12.dp))
             if (status.mileageProgress >= 0f) {
-                LinearProgressIndicator(progress = { status.mileageProgress }, modifier = Modifier.fillMaxWidth().height(6.dp), color = if (status.mileageProgress > 0.9f) Color.Red else Color.Green, trackColor = Color.White.copy(alpha = 0.3f))
-                Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) { Text("Mileage", color = Color.White, fontSize = 12.sp); Text(status.mileageText, color = Color.White, fontSize = 12.sp) }
+                LinearProgressIndicator(
+                    progress = { status.mileageProgress },
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .height(6.dp),
+                    color = if (status.mileageProgress > 0.9f) Color.Red else Color.Green,
+                    trackColor = Color.White.copy(alpha = 0.3f)
+                )
+                Row(
+                    Modifier.fillMaxWidth(),
+                    horizontalArrangement = Arrangement.SpaceBetween
+                ) {
+                    Text("Mileage", color = Color.White, fontSize = 12.sp); Text(
+                    status.mileageText,
+                    color = Color.White,
+                    fontSize = 12.sp
+                )
+                }
             }
             if (status.timeProgress >= 0f) {
                 Spacer(modifier = Modifier.height(8.dp))
-                LinearProgressIndicator(progress = { status.timeProgress }, modifier = Modifier.fillMaxWidth().height(6.dp), color = if (status.timeProgress > 0.9f) Color.Red else Color.Green, trackColor = Color.White.copy(alpha = 0.3f))
-                Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) { Text("Time", color = Color.White, fontSize = 12.sp); Text(status.timeText, color = Color.White, fontSize = 12.sp) }
+                LinearProgressIndicator(
+                    progress = { status.timeProgress },
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .height(6.dp),
+                    color = if (status.timeProgress > 0.9f) Color.Red else Color.Green,
+                    trackColor = Color.White.copy(alpha = 0.3f)
+                )
+                Row(
+                    Modifier.fillMaxWidth(),
+                    horizontalArrangement = Arrangement.SpaceBetween
+                ) {
+                    Text("Time", color = Color.White, fontSize = 12.sp); Text(
+                    status.timeText,
+                    color = Color.White,
+                    fontSize = 12.sp
+                )
+                }
             }
         }
     }

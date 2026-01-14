@@ -95,11 +95,17 @@ fun ServiceHistoryScreen(
                                     }
                                 )
                         ) {
-                            Box(modifier = Modifier.fillMaxWidth().padding(16.dp)) {
+                            Box(modifier = Modifier
+                                .fillMaxWidth()
+                                .padding(16.dp)) {
 
                                 Column(modifier = Modifier.align(Alignment.CenterStart)) {
                                     Text(text = record.date, color = Color.White, fontSize = 16.sp)
-                                    Text(text = "${record.mileageAtService} miles", color = Color.White, fontWeight = FontWeight.Bold)
+                                    Text(
+                                        text = "${record.mileageAtService} miles",
+                                        color = Color.White,
+                                        fontWeight = FontWeight.Bold
+                                    )
 
                                     if (record.description.isNotBlank()) {
                                         Spacer(modifier = Modifier.height(4.dp))
@@ -151,9 +157,13 @@ fun ServiceHistoryScreen(
         val datePickerDialog = DatePickerDialog(
             context,
             { _, year, month, dayOfMonth ->
-                val formattedDate = "$year-${(month + 1).toString()
-                    .padStart(2, '0')}-${dayOfMonth.toString()
-                        .padStart(2, '0')}"
+                val formattedDate = "$year-${
+                    (month + 1).toString()
+                        .padStart(2, '0')
+                }-${
+                    dayOfMonth.toString()
+                        .padStart(2, '0')
+                }"
                 dateInput = formattedDate
             },
             calendar.get(Calendar.YEAR),
@@ -192,10 +202,10 @@ fun ServiceHistoryScreen(
                     OutlinedTextField(
                         value = mileageInput,
                         onValueChange = { mileageInput = it },
-                        label = { Text("Mileage")},
+                        label = { Text("Mileage") },
                         keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number),
                         modifier = Modifier.fillMaxWidth(),
-                        placeholder = { Text(currentCarMileage.toString())}
+                        placeholder = { Text(currentCarMileage.toString()) }
                     )
 
                     Spacer(modifier = Modifier.height(8.dp))

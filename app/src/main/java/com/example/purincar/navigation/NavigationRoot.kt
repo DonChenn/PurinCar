@@ -62,6 +62,7 @@ fun NavigationRoot(
                         )
                     }
                 }
+
                 is Route.CarDetailsScreen -> {
                     NavEntry(key) {
                         val viewModel = viewModel<CarDetailsViewModel>(
@@ -79,18 +80,24 @@ fun NavigationRoot(
                         )
                     }
                 }
+
                 is Route.ServiceHistory -> {
                     NavEntry(key) {
                         val viewModel = viewModel<ServiceHistoryViewModel>(
                             factory = object : ViewModelProvider.Factory {
                                 override fun <T : ViewModel> create(modelClass: Class<T>): T {
-                                    return ServiceHistoryViewModel(dao, key.carId, key.serviceType) as T
+                                    return ServiceHistoryViewModel(
+                                        dao,
+                                        key.carId,
+                                        key.serviceType
+                                    ) as T
                                 }
                             }
                         )
                         ServiceHistoryScreen(viewModel = viewModel)
                     }
                 }
+
                 else -> error("Unknown NavKey: $key")
             }
         }

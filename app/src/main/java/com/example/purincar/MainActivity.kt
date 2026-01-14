@@ -1,4 +1,3 @@
-// app/src/main/java/com/example/purincar/MainActivity.kt
 package com.example.purincar
 
 import android.os.Bundle
@@ -50,16 +49,21 @@ class MainActivity : ComponentActivity() {
                 "read_odometer",
                 "read_security"
             ),
-            false, // Test Mode
+            false, // test
             object : SmartcarCallback {
                 override fun handleResponse(smartcarResponse: SmartcarResponse?) {
                     val code = smartcarResponse?.code
                     if (code != null) {
-                        Toast.makeText(applicationContext, "Fetching Vehicle Data...", Toast.LENGTH_SHORT).show()
-                        fetchCarData(code)
+                        Toast.makeText(
+                            applicationContext,
+                            "Fetching Vehicle Data...",
+                            Toast.LENGTH_SHORT
+                        ).show()
+                        exchangeCodeForToken(code)
                     } else {
                         Log.e("Smartcar", "Auth failed: ${smartcarResponse?.toString()}")
-                        Toast.makeText(applicationContext, "Login Failed", Toast.LENGTH_SHORT).show()
+                        Toast.makeText(applicationContext, "Login Failed", Toast.LENGTH_SHORT)
+                            .show()
                     }
                 }
             }
@@ -73,98 +77,189 @@ class MainActivity : ComponentActivity() {
                 }
             )
         }
+
+        tryAutoConnect()
     }
 
-    private fun fetchCarData(authCode: String) {
+    /**
+     * 1. Manual Login Flow: Exchanges the Auth Code for an Access Token
+     */
+    private fun exchangeCodeForToken(authCode: String) {
         lifecycleScope.launch(Dispatchers.IO) {
             try {
-                // 1. EXCHANGE AUTH CODE FOR ACCESS TOKEN
                 val tokenReq = Request.Builder()
                     .url("https://auth.smartcar.com/oauth/token")
                     .header("Authorization", Credentials.basic(CLIENT_ID, CLIENT_SECRET))
-                    .post(FormBody.Builder()
-                        .add("grant_type", "authorization_code")
-                        .add("code", authCode)
-                        .add("redirect_uri", REDIRECT_URI)
-                        .build())
+                    .post(
+                        FormBody.Builder()
+                            .add("grant_type", "authorization_code")
+                            .add("code", authCode)
+                            .add("redirect_uri", REDIRECT_URI)
+                            .build()
+                    )
                     .build()
                 val tokenRes = client.newCall(tokenReq).execute()
                 if (!tokenRes.isSuccessful) throw IOException("Token Error")
-                val accessToken = JSONObject(tokenRes.body!!.string()).getString("access_token")
 
-                // 2. GET VEHICLE ID
-                val vehiclesResponse = client.newCall(
-                    Request.Builder()
+                val json = JSONObject(tokenRes.body!!.string())
+                val accessToken = json.getString("access_token")
+                val refreshToken = json.getString("refresh_token")
+
+                // SAVE TOKENS
+                getSharedPreferences("smartcar_prefs", MODE_PRIVATE).edit().apply {
+                    putString("access_token", accessToken)
+                    putString("refresh_token", refreshToken)
+                    apply()
+                }
+
+                // Proceed to fetch data
+                fetchCarDataWithToken(accessToken)
+
+            } catch (e: Exception) {
+                Log.e("Smartcar", "Login Error", e)
+                withContext(Dispatchers.Main) {
+                    Toast.makeText(
+                        applicationContext,
+                        "Login Error: ${e.message}",
+                        Toast.LENGTH_LONG
+                    ).show()
+                }
+            }
+        }
+    }
+
+    private fun tryAutoConnect() {
+        lifecycleScope.launch(Dispatchers.IO) {
+            val prefs = getSharedPreferences("smartcar_prefs", MODE_PRIVATE)
+            var accessToken = prefs.getString("access_token", null)
+            val refreshToken = prefs.getString("refresh_token", null)
+
+            if (accessToken != null) {
+                try {
+                    // Quick check to see if token is valid
+                    val req = Request.Builder()
                         .url("https://api.smartcar.com/v2.0/vehicles")
                         .header("Authorization", "Bearer $accessToken")
                         .build()
-                ).execute().body!!.string()
 
-                val vehicleId = JSONObject(vehiclesResponse).getJSONArray("vehicles").getString(0)
-
-                // HELPER FUNCTION FOR ENDPOINTS
-                fun fetch(endpoint: String): JSONObject {
-                    val url = if (endpoint.isEmpty())
-                        "https://api.smartcar.com/v2.0/vehicles/$vehicleId"
-                    else
-                        "https://api.smartcar.com/v2.0/vehicles/$vehicleId/$endpoint"
-
-                    val req = Request.Builder()
-                        .url(url)
-                        .header("Authorization", "Bearer $accessToken")
-                        .build()
                     val res = client.newCall(req).execute()
-                    // Return empty JSON if call fails
-                    return JSONObject(res.body?.string() ?: "{}")
+
+                    if (res.code == 401 && refreshToken != null) {
+                        Log.d("Smartcar", "Token expired. Refreshing...")
+                        // expired token, refresh to get a new one
+                        val refreshReq = Request.Builder()
+                            .url("https://auth.smartcar.com/oauth/token")
+                            .header("Authorization", Credentials.basic(CLIENT_ID, CLIENT_SECRET))
+                            .post(
+                                FormBody.Builder()
+                                    .add("grant_type", "refresh_token")
+                                    .add("refresh_token", refreshToken)
+                                    .build()
+                            )
+                            .build()
+
+                        val refreshRes = client.newCall(refreshReq).execute()
+                        if (refreshRes.isSuccessful) {
+                            val newJson = JSONObject(refreshRes.body!!.string())
+                            accessToken = newJson.getString("access_token")
+                            val newRefresh = newJson.optString("refresh_token", refreshToken)
+
+                            // Save new tokens
+                            prefs.edit().apply {
+                                putString("access_token", accessToken)
+                                putString("refresh_token", newRefresh)
+                                apply()
+                            }
+
+                            Log.d("Smartcar", "Token refreshed. Fetching data...")
+                            fetchCarDataWithToken(accessToken!!)
+                        }
+                    } else if (res.isSuccessful) {
+                        // Token is still good
+                        Log.d("Smartcar", "Token valid. Fetching data...")
+                        fetchCarDataWithToken(accessToken)
+                    }
+                } catch (e: Exception) {
+                    Log.e("Smartcar", "Auto-connect failed", e)
                 }
+            }
+        }
+    }
 
-                // 3. FETCH DATA POINTS
+    private suspend fun fetchCarDataWithToken(accessToken: String) {
+        try {
+            // A. GET VEHICLE ID
+            val vehiclesResponse = client.newCall(
+                Request.Builder()
+                    .url("https://api.smartcar.com/v2.0/vehicles")
+                    .header("Authorization", "Bearer $accessToken")
+                    .build()
+            ).execute().body!!.string()
 
-                // Vehicle Name
-                val info = fetch("")
-                val carName = "${info.getInt("year")} ${info.getString("make")} ${info.getString("model")}"
+            val vehicleId = JSONObject(vehiclesResponse).getJSONArray("vehicles").getString(0)
 
-                // Odometer
-                val odoJson = fetch("odometer")
-                val miles = (odoJson.optDouble("distance", 0.0) * 0.621371).toInt()
+            // B. HELPER FUNCTION FOR ENDPOINTS
+            fun fetch(endpoint: String): JSONObject {
+                val url = if (endpoint.isEmpty())
+                    "https://api.smartcar.com/v2.0/vehicles/$vehicleId"
+                else
+                    "https://api.smartcar.com/v2.0/vehicles/$vehicleId/$endpoint"
 
-                // Fuel Level
-                val fuelJson = fetch("fuel")
-                Log.d("PurinCar", "Fuel JSON: $fuelJson")
-                val fuelPercent = fuelJson.optDouble("percentRemaining", -1.0)
+                val req = Request.Builder()
+                    .url(url)
+                    .header("Authorization", "Bearer $accessToken")
+                    .build()
+                val res = client.newCall(req).execute()
+                // Return empty JSON if call fails so app doesn't crash
+                return JSONObject(res.body?.string() ?: "{}")
+            }
 
-                // Door Locked Status
-                val secJson = fetch("security")
-                val isLocked = secJson.optBoolean("isLocked", false)
+            // C. FETCH DATA POINTS
 
-                // 4. UPDATE DATABASE
-                val existingCar = carDao.getCarBySmartcarId(vehicleId)
+            // Vehicle Name
+            val info = fetch("")
+            val carName =
+                "${info.getInt("year")} ${info.getString("make")} ${info.getString("model")}"
 
-                // Only update the requested fields. Others are set to null.
-                val carToSave = existingCar?.copy(
-                    name = carName,
-                    currentMileage = miles,
-                    fuelPercent = if(fuelPercent >= 0) fuelPercent else null,
-                    isLocked = isLocked,
-                ) ?: CarEntity(
-                    name = carName,
-                    currentMileage = miles,
-                    smartcarId = vehicleId,
-                    fuelPercent = if(fuelPercent >= 0) fuelPercent else null,
-                    isLocked = isLocked,
-                )
+            // Odometer
+            val odoJson = fetch("odometer")
+            val miles = (odoJson.optDouble("distance", 0.0) * 0.621371).toInt()
 
-                if (existingCar != null) carDao.updateCar(carToSave) else carDao.insertCar(carToSave)
+            // Fuel Level
+            val fuelJson = fetch("fuel")
+            Log.d("PurinCar", "Fuel JSON: $fuelJson") // Debug logging
+            val fuelPercent = fuelJson.optDouble("percentRemaining", -1.0)
 
-                withContext(Dispatchers.Main) {
-                    Toast.makeText(applicationContext, "Updated: $carName", Toast.LENGTH_LONG).show()
-                }
+            // Door Locked Status
+            val secJson = fetch("security")
+            val isLocked = secJson.optBoolean("isLocked", false)
 
-            } catch (e: Exception) {
-                Log.e("Smartcar", "Sync Error", e)
-                withContext(Dispatchers.Main) {
-                    Toast.makeText(applicationContext, "Error: ${e.message}", Toast.LENGTH_LONG).show()
-                }
+            // D. UPDATE DATABASE
+            val existingCar = carDao.getCarBySmartcarId(vehicleId)
+
+            val carToSave = existingCar?.copy(
+                name = carName,
+                currentMileage = miles,
+                fuelPercent = if (fuelPercent >= 0) fuelPercent else null,
+                isLocked = isLocked,
+            ) ?: CarEntity(
+                name = carName,
+                currentMileage = miles,
+                smartcarId = vehicleId,
+                fuelPercent = if (fuelPercent >= 0) fuelPercent else null,
+                isLocked = isLocked,
+            )
+
+            if (existingCar != null) carDao.updateCar(carToSave) else carDao.insertCar(carToSave)
+
+            withContext(Dispatchers.Main) {
+                Toast.makeText(applicationContext, "Updated: $carName", Toast.LENGTH_LONG).show()
+            }
+
+        } catch (e: Exception) {
+            Log.e("Smartcar", "Sync Error", e)
+            withContext(Dispatchers.Main) {
+                Toast.makeText(applicationContext, "Error: ${e.message}", Toast.LENGTH_LONG).show()
             }
         }
     }

@@ -35,7 +35,11 @@ fun CarSelectionScreen(
         // 1. CAR LIST
         if (cars.isEmpty()) {
             Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
-                Text("Tap + to import your car", style = MaterialTheme.typography.bodyLarge, color = Color.Gray)
+                Text(
+                    "Tap + to import your car",
+                    style = MaterialTheme.typography.bodyLarge,
+                    color = Color.Gray
+                )
             }
         } else {
             LazyColumn(

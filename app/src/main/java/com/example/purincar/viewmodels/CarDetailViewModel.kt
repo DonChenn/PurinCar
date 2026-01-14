@@ -52,22 +52,34 @@ class CarDetailsViewModel(
         val currentDate = LocalDate.now()
 
         serviceTypes.map { type ->
-            val lastRecord = records.filter { it.serviceType == type }.maxByOrNull { it.mileageAtService }
+            val lastRecord =
+                records.filter { it.serviceType == type }.maxByOrNull { it.mileageAtService }
             val lastMileage = lastRecord?.mileageAtService ?: 0
             val mInterval = mileageIntervals[type] ?: 5000
             val mDriven = (currentMileage - lastMileage).coerceAtLeast(0)
-            val mProgress = if (mInterval > 0) (mDriven.toFloat() / mInterval.toFloat()).coerceIn(0f, 1f) else -1f
+            val mProgress = if (mInterval > 0) (mDriven.toFloat() / mInterval.toFloat()).coerceIn(
+                0f,
+                1f
+            ) else -1f
 
             val lastDateStr = lastRecord?.date
             val daysElapsed = if (lastDateStr != null) {
                 try {
                     val lastDate = LocalDate.parse(lastDateStr)
                     ChronoUnit.DAYS.between(lastDate, currentDate).toInt().coerceAtLeast(0)
-                } catch (e: DateTimeParseException) { 0 }
-            } else { 0 }
+                } catch (e: DateTimeParseException) {
+                    0
+                }
+            } else {
+                0
+            }
 
             val tInterval = timeIntervals[type] ?: 365
-            val tProgress = if (tInterval > 0) (daysElapsed.toFloat() / tInterval.toFloat()).coerceIn(0f, 1f) else -1f
+            val tProgress =
+                if (tInterval > 0) (daysElapsed.toFloat() / tInterval.toFloat()).coerceIn(
+                    0f,
+                    1f
+                ) else -1f
 
             ServiceStatus(
                 name = type,
@@ -95,7 +107,8 @@ class CarDetailsViewModel(
             val currentCar = carInfo.firstOrNull()
             if (currentCar != null) maxMileageFound = currentCar.currentMileage
 
-            val dataLines = if (lines.isNotEmpty() && lines[0].startsWith("Type")) lines.drop(1) else lines
+            val dataLines =
+                if (lines.isNotEmpty() && lines[0].startsWith("Type")) lines.drop(1) else lines
 
             dataLines.forEach { line ->
                 if (line.isBlank()) return@forEach
@@ -109,9 +122,22 @@ class CarDetailsViewModel(
 
                     if (mileage > maxMileageFound) maxMileageFound = mileage
 
-                    val appServiceType = serviceTypes.find { it.equals(type, ignoreCase = true) || it.contains(type, ignoreCase = true) }
+                    val appServiceType = serviceTypes.find {
+                        it.equals(type, ignoreCase = true) || it.contains(
+                            type,
+                            ignoreCase = true
+                        )
+                    }
                     if (appServiceType != null) {
-                        dao.insertRecord(MaintenanceRecord(carId = carId, serviceType = appServiceType, date = date, mileageAtService = mileage, description = description))
+                        dao.insertRecord(
+                            MaintenanceRecord(
+                                carId = carId,
+                                serviceType = appServiceType,
+                                date = date,
+                                mileageAtService = mileage,
+                                description = description
+                            )
+                        )
                     }
                 }
             }
