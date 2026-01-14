@@ -8,7 +8,8 @@ import kotlinx.coroutines.flow.Flow
 data class CarEntity(
     @PrimaryKey(autoGenerate = true) val id: Int = 0,
     val name: String,
-    val currentMileage: Int
+    val currentMileage: Int,
+    val smartcarId: String? = null
 )
 
 @Entity(
@@ -40,6 +41,9 @@ interface CarDao {
     @Delete
     suspend fun deleteCar(car: CarEntity)
 
+    @Query("SELECT * FROM cars WHERE smartcarId = :smartcarId LIMIT 1")
+    suspend fun getCarBySmartcarId(smartcarId: String): CarEntity?
+
     @Query("SELECT * FROM cars")
     fun getAllCars(): Flow<List<CarEntity>>
 
@@ -56,7 +60,7 @@ interface CarDao {
     suspend fun deleteRecord(record: MaintenanceRecord)
 }
 
-@Database(entities = [CarEntity::class, MaintenanceRecord::class], version = 2)
+@Database(entities = [CarEntity::class, MaintenanceRecord::class], version = 3) // <--- Version 3
 abstract class PurinCarDatabase : RoomDatabase() {
     abstract fun carDao(): CarDao
 
@@ -67,7 +71,7 @@ abstract class PurinCarDatabase : RoomDatabase() {
         fun getDatabase(context: Context): PurinCarDatabase {
             return Instance ?: synchronized(this) {
                 Room.databaseBuilder(context, PurinCarDatabase::class.java, "purin_car_db")
-                    .fallbackToDestructiveMigration(false)
+                    .fallbackToDestructiveMigration(true) // <--- Allow DB reset on schema change
                     .build()
                     .also { Instance = it }
             }

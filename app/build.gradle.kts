@@ -84,5 +84,4 @@ dependencies {
     implementation(libs.androidx.lifecycle.viewmodel.navigation3)
     implementation(libs.kotlinx.serialization.json)
     implementation(libs.smartcar.auth)
-    implementation("com.squareup.okhttp3:okhttp:5.3.2")
-}
+    implementation("com.squareup.okhttp3:okhttp:4.12.0")}
