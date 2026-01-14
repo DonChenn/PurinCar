@@ -23,7 +23,6 @@ import okhttp3.OkHttpClient
 import okhttp3.Request
 import org.json.JSONObject
 import java.io.IOException
-import kotlin.math.roundToInt
 
 class MainActivity : ComponentActivity() {
 
@@ -47,12 +46,9 @@ class MainActivity : ComponentActivity() {
             REDIRECT_URI,
             arrayOf(
                 "read_vehicle_info",
-                "read_odometer",
                 "read_fuel",
-                "read_tires",
-                "read_engine_oil",
-                "read_security",
-                "control_security"
+                "read_odometer",
+                "read_security"
             ),
             true, // Test Mode
             object : SmartcarCallback {
@@ -82,7 +78,7 @@ class MainActivity : ComponentActivity() {
     private fun fetchCarData(authCode: String) {
         lifecycleScope.launch(Dispatchers.IO) {
             try {
-                // ACCESS TOKEN
+                // 1. EXCHANGE AUTH CODE FOR ACCESS TOKEN
                 val tokenReq = Request.Builder()
                     .url("https://auth.smartcar.com/oauth/token")
                     .header("Authorization", Credentials.basic(CLIENT_ID, CLIENT_SECRET))
@@ -96,29 +92,35 @@ class MainActivity : ComponentActivity() {
                 if (!tokenRes.isSuccessful) throw IOException("Token Error")
                 val accessToken = JSONObject(tokenRes.body!!.string()).getString("access_token")
 
-                // VEHICLE NAME
-                val vehicleId = JSONObject(
-                    client.newCall(
-                        Request.Builder()
-                            .url("https://api.smartcar.com/v2.0/vehicles")
-                            .header("Authorization", "Bearer $accessToken")
-                            .build()
-                    ).execute().body!!.string()
-                ).getJSONArray("vehicles").getString(0)
+                // 2. GET VEHICLE ID
+                val vehiclesResponse = client.newCall(
+                    Request.Builder()
+                        .url("https://api.smartcar.com/v2.0/vehicles")
+                        .header("Authorization", "Bearer $accessToken")
+                        .build()
+                ).execute().body!!.string()
 
-                // JSON ENDPOINT
+                val vehicleId = JSONObject(vehiclesResponse).getJSONArray("vehicles").getString(0)
+
+                // HELPER FUNCTION FOR ENDPOINTS
                 fun fetch(endpoint: String): JSONObject {
+                    val url = if (endpoint.isEmpty())
+                        "https://api.smartcar.com/v2.0/vehicles/$vehicleId"
+                    else
+                        "https://api.smartcar.com/v2.0/vehicles/$vehicleId/$endpoint"
+
                     val req = Request.Builder()
-                        .url("https://api.smartcar.com/v2.0/vehicles/$vehicleId/$endpoint")
+                        .url(url)
                         .header("Authorization", "Bearer $accessToken")
                         .build()
                     val res = client.newCall(req).execute()
+                    // Return empty JSON if call fails
                     return JSONObject(res.body?.string() ?: "{}")
                 }
 
-                // FETCH ALL POINTS
+                // 3. FETCH DATA POINTS
 
-                // Info
+                // Vehicle Name (Info)
                 val info = fetch("")
                 val carName = "${info.getInt("year")} ${info.getString("make")} ${info.getString("model")}"
 
@@ -126,49 +128,30 @@ class MainActivity : ComponentActivity() {
                 val odoJson = fetch("odometer")
                 val miles = (odoJson.optDouble("distance", 0.0) * 0.621371).toInt()
 
-                // Fuel & Range
+                // Fuel Level
                 val fuelJson = fetch("fuel")
                 val fuelPercent = fuelJson.optDouble("percentRemaining", -1.0)
-                val range = (fuelJson.optDouble("range", 0.0) * 0.621371) // Convert km to miles
 
-                // Oil Life
-                val oilJson = fetch("engine/oil")
-                val oilLife = oilJson.optDouble("lifeRemaining", -1.0)
-
-                // Security (Doors)
+                // Door Locked Status (Security)
                 val secJson = fetch("security")
                 val isLocked = secJson.optBoolean("isLocked", false)
 
-                // Tires
-                val tiresJson = fetch("tires")
-                val fl = tiresJson.optDouble("frontLeft", 0.0).roundToInt()
-                val fr = tiresJson.optDouble("frontRight", 0.0).roundToInt()
-                val rl = tiresJson.optDouble("backLeft", 0.0).roundToInt()
-                val rr = tiresJson.optDouble("backRight", 0.0).roundToInt()
-                val tireString = "FL:$fl FR:$fr RL:$rl RR:$rr"
-
-                // UPDATE DATABASE
+                // 4. UPDATE DATABASE
                 val existingCar = carDao.getCarBySmartcarId(vehicleId)
 
+                // Only update the requested fields. Others are set to null.
                 val carToSave = existingCar?.copy(
                     name = carName,
                     currentMileage = miles,
                     fuelPercent = if(fuelPercent >= 0) fuelPercent else null,
-                    range = range,
-                    oilLife = if(oilLife >= 0) oilLife else null,
-                    tirePressure = tireString,
-                    isLocked = isLocked
+                    isLocked = isLocked,
+                ) ?: CarEntity(
+                    name = carName,
+                    currentMileage = miles,
+                    smartcarId = vehicleId,
+                    fuelPercent = if(fuelPercent >= 0) fuelPercent else null,
+                    isLocked = isLocked,
                 )
-                    ?: CarEntity(
-                        name = carName,
-                        currentMileage = miles,
-                        smartcarId = vehicleId,
-                        fuelPercent = if(fuelPercent >= 0) fuelPercent else null,
-                        range = range,
-                        oilLife = if(oilLife >= 0) oilLife else null,
-                        tirePressure = tireString,
-                        isLocked = isLocked
-                    )
 
                 if (existingCar != null) carDao.updateCar(carToSave) else carDao.insertCar(carToSave)
 

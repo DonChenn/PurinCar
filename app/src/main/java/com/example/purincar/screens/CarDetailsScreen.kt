@@ -11,8 +11,6 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.List
 import androidx.compose.material.icons.filled.Info
-import androidx.compose.material.icons.filled.Lock
-import androidx.compose.material.icons.filled.Refresh
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
@@ -31,7 +29,6 @@ import com.example.purincar.viewmodels.ServiceStatus
 import kotlinx.coroutines.launch
 import java.io.BufferedReader
 import java.io.InputStreamReader
-import kotlin.math.roundToInt
 
 @Composable
 fun CarDetailsScreen(
@@ -64,7 +61,7 @@ fun CarDetailsScreen(
         }
     ) { paddingValues ->
         Box(modifier = Modifier.fillMaxSize().padding(paddingValues)) {
-            if (selectedTab == 0) VehicleStatusTab(car, viewModel) else ServiceRecordsTab(car, serviceStatuses, viewModel, onServiceClick)
+            if (selectedTab == 0) VehicleStatusTab(car) else ServiceRecordsTab(car, serviceStatuses, viewModel, onServiceClick)
         }
     }
 }
@@ -78,8 +75,7 @@ fun CarHeader(car: CarEntity?) {
 }
 
 @Composable
-fun VehicleStatusTab(car: CarEntity?, viewModel: CarDetailsViewModel) {
-    val context = LocalContext.current
+fun VehicleStatusTab(car: CarEntity?) {
     Column(
         modifier = Modifier.fillMaxSize().padding(start = 16.dp, end = 16.dp, bottom = 16.dp),
         horizontalAlignment = Alignment.CenterHorizontally,
@@ -94,45 +90,13 @@ fun VehicleStatusTab(car: CarEntity?, viewModel: CarDetailsViewModel) {
 
                 Row(modifier = Modifier.fillMaxWidth()) {
                     Box(modifier = Modifier.weight(1f), contentAlignment = Alignment.CenterStart) {
-                        StatusItem("Range", "${car?.range?.roundToInt() ?: "-"} mi", isRightAligned = false)
+                        StatusItem("Doors", if (car?.isLocked == true) "Locked" else "Unlocked")
                     }
                     Box(modifier = Modifier.weight(1f), contentAlignment = Alignment.CenterEnd) {
-                        StatusItem("Fuel/EV", "${((car?.fuelPercent ?: 0.0) * 100).toInt()}%", isRightAligned = true)
+                        StatusItem("Fuel", "${((car?.fuelPercent ?: 0.0) * 100).toInt()}%", isRightAligned = true)
                     }
                 }
                 Spacer(modifier = Modifier.height(16.dp))
-                Row(modifier = Modifier.fillMaxWidth()) {
-                    Box(modifier = Modifier.weight(1f), contentAlignment = Alignment.CenterStart) {
-                        StatusItem("Oil Life", "${((car?.oilLife ?: 0.0) * 100).toInt()}%", isRightAligned = false)
-                    }
-                    Box(modifier = Modifier.weight(1f), contentAlignment = Alignment.CenterEnd) {
-                        StatusItem("Tires (PSI)", car?.tirePressure ?: "N/A", isRightAligned = true)
-                    }
-                }
-
-                Spacer(modifier = Modifier.height(16.dp))
-                StatusItem("Doors", if (car?.isLocked == true) "Locked" else "Unlocked")
-            }
-        }
-
-        Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceEvenly) {
-            Button(
-                onClick = { car?.smartcarId?.let { id -> viewModel.toggleLock(id, true, context) } },
-                colors = ButtonDefaults.buttonColors(containerColor = PurinBrown),
-                modifier = Modifier.weight(1f).padding(end = 8.dp)
-            ) {
-                Icon(Icons.Default.Lock, contentDescription = null, modifier = Modifier.size(18.dp))
-                Spacer(Modifier.width(8.dp))
-                Text("Lock")
-            }
-            Button(
-                onClick = { car?.smartcarId?.let { id -> viewModel.toggleLock(id, false, context) } },
-                colors = ButtonDefaults.buttonColors(containerColor = PurinBrown),
-                modifier = Modifier.weight(1f).padding(start = 8.dp)
-            ) {
-                Icon(Icons.Default.Refresh, contentDescription = null, modifier = Modifier.size(18.dp))
-                Spacer(Modifier.width(8.dp))
-                Text("Unlock")
             }
         }
     }
