@@ -73,7 +73,7 @@ fun CarDetailsScreen(
 fun CarHeader(car: CarEntity?) {
     Column(horizontalAlignment = Alignment.CenterHorizontally, modifier = Modifier.fillMaxWidth().padding(bottom = 16.dp)) {
         Text(text = car?.name ?: "Loading...", fontSize = 28.sp, color = PurinBrown, fontWeight = FontWeight.Bold, lineHeight = 32.sp)
-        Text(text = "Mileage: ${car?.currentMileage ?: 0} miles", fontSize = 20.sp, fontWeight = FontWeight.Bold, color = Color.Black)
+        Text(text = "Odometer: ${car?.currentMileage ?: 0} miles", fontSize = 20.sp, fontWeight = FontWeight.Bold, color = Color.Black)
     }
 }
 
