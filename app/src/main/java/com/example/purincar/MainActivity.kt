@@ -120,7 +120,7 @@ class MainActivity : ComponentActivity() {
 
                 // 3. FETCH DATA POINTS
 
-                // Vehicle Name (Info)
+                // Vehicle Name
                 val info = fetch("")
                 val carName = "${info.getInt("year")} ${info.getString("make")} ${info.getString("model")}"
 
@@ -133,7 +133,7 @@ class MainActivity : ComponentActivity() {
                 Log.d("PurinCar", "Fuel JSON: $fuelJson")
                 val fuelPercent = fuelJson.optDouble("percentRemaining", -1.0)
 
-                // Door Locked Status (Security)
+                // Door Locked Status
                 val secJson = fetch("security")
                 val isLocked = secJson.optBoolean("isLocked", false)
 

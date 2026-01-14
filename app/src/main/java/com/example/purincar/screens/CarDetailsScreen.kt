@@ -29,6 +29,7 @@ import com.example.purincar.viewmodels.ServiceStatus
 import kotlinx.coroutines.launch
 import java.io.BufferedReader
 import java.io.InputStreamReader
+import androidx.compose.runtime.saveable.rememberSaveable
 
 @Composable
 fun CarDetailsScreen(
@@ -37,7 +38,7 @@ fun CarDetailsScreen(
 ) {
     val car by viewModel.carInfo.collectAsState(initial = null)
     val serviceStatuses by viewModel.serviceStatuses.collectAsState(initial = emptyList())
-    var selectedTab by remember { mutableIntStateOf(0) }
+    var selectedTab by rememberSaveable { mutableIntStateOf(0) }
 
     Scaffold(
         containerColor = PurinYellow,
