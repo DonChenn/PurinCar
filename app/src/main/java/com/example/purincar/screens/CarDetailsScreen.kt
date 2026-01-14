@@ -11,7 +11,6 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.List
 import androidx.compose.material.icons.filled.Info
-import androidx.compose.material.icons.filled.List
 import androidx.compose.material.icons.filled.Lock
 import androidx.compose.material.icons.filled.Refresh
 import androidx.compose.material3.*
@@ -21,6 +20,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.example.purincar.data.CarEntity
@@ -106,13 +106,12 @@ fun VehicleStatusTab(car: CarEntity?, viewModel: CarDetailsViewModel) {
                         StatusItem("Oil Life", "${((car?.oilLife ?: 0.0) * 100).toInt()}%", isRightAligned = false)
                     }
                     Box(modifier = Modifier.weight(1f), contentAlignment = Alignment.CenterEnd) {
-                        StatusItem("Doors", if (car?.isLocked == true) "Locked" else "Unlocked", isRightAligned = true)
+                        StatusItem("Tires (PSI)", car?.tirePressure ?: "N/A", isRightAligned = true)
                     }
                 }
-                Spacer(modifier = Modifier.height(16.dp))
 
-                Text(text = "Tires (PSI)", fontWeight = FontWeight.Bold, fontSize = 14.sp, color = Color.White.copy(alpha = 0.7f))
-                Text(text = car?.tirePressure ?: "N/A", fontSize = 16.sp, fontWeight = FontWeight.Bold, color = Color.White)
+                Spacer(modifier = Modifier.height(16.dp))
+                StatusItem("Doors", if (car?.isLocked == true) "Locked" else "Unlocked")
             }
         }
 
@@ -157,16 +156,31 @@ fun ServiceRecordsTab(car: CarEntity?, serviceStatuses: List<ServiceStatus>, vie
                 Spacer(modifier = Modifier.height(16.dp)); HorizontalDivider(color = PurinBrown); Spacer(modifier = Modifier.height(16.dp))
             }
         }
-        item { Text(text = "Maintenance Schedule", fontSize = 22.sp, fontWeight = FontWeight.Bold, color = PurinBrown, modifier = Modifier.padding(bottom = 16.dp)) }
         items(serviceStatuses) { status -> ServiceStatusItem(status = status, onClick = { onServiceClick(status.name) }); Spacer(modifier = Modifier.height(16.dp)) }
     }
 }
 
 @Composable
 fun StatusItem(label: String, value: String, isRightAligned: Boolean = false) {
-    Column(horizontalAlignment = if (isRightAligned) Alignment.End else Alignment.Start) {
-        Text(text = label, fontSize = 14.sp, color = Color.White.copy(alpha = 0.7f))
-        Text(text = value, fontSize = 20.sp, fontWeight = FontWeight.Bold, color = Color.White)
+    Column(
+        modifier = Modifier.fillMaxWidth(),
+        horizontalAlignment = if (isRightAligned) Alignment.End else Alignment.Start
+    ) {
+        Text(
+            text = label,
+            fontSize = 14.sp,
+            color = Color.White.copy(alpha = 0.7f),
+            textAlign = if (isRightAligned) TextAlign.End else TextAlign.Start,
+            modifier = Modifier.fillMaxWidth()
+        )
+        Text(
+            text = value,
+            fontSize = 18.sp,
+            fontWeight = FontWeight.Bold,
+            color = Color.White,
+            textAlign = if (isRightAligned) TextAlign.End else TextAlign.Start,
+            modifier = Modifier.fillMaxWidth()
+        )
     }
 }
 
