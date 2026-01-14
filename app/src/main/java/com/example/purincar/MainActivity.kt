@@ -1,6 +1,5 @@
 package com.example.purincar
 
-import android.content.Context
 import android.os.Bundle
 import android.util.Log
 import android.widget.Toast
@@ -23,7 +22,6 @@ import okhttp3.OkHttpClient
 import okhttp3.Request
 import org.json.JSONObject
 import java.io.IOException
-import androidx.core.content.edit
 
 class MainActivity : ComponentActivity() {
 
@@ -31,7 +29,9 @@ class MainActivity : ComponentActivity() {
     private lateinit var carDao: CarDao
     private val client = OkHttpClient()
 
+    // Ensure these match your actual setup
     private val CLIENT_ID = "51519156-f3db-41cf-99be-bcd5770827de"
+    // Ideally use BuildConfig.SMARTCAR_CLIENT_SECRET, but for now ensure it works:
     private val CLIENT_SECRET = BuildConfig.SMARTCAR_CLIENT_SECRET
     private val REDIRECT_URI = "sc$CLIENT_ID://exchange"
 
@@ -39,21 +39,21 @@ class MainActivity : ComponentActivity() {
         super.onCreate(savedInstanceState)
         enableEdgeToEdge()
 
+        // 1. Initialize DAO
         val database = PurinCarDatabase.getDatabase(applicationContext)
         carDao = database.carDao()
 
-        // 1. SMARTCAR AUTH
         smartcarAuth = SmartcarAuth(
             CLIENT_ID,
             REDIRECT_URI,
             arrayOf("read_odometer", "read_vehicle_info"),
-            true, // Test Mode
+            true,
             object : SmartcarCallback {
                 override fun handleResponse(smartcarResponse: SmartcarResponse?) {
                     val code = smartcarResponse?.code
                     if (code != null) {
-                        Toast.makeText(applicationContext, "Linking Car...", Toast.LENGTH_SHORT).show()
-                        exchangeCodeForToken(code)
+                        Toast.makeText(applicationContext, "Importing Car...", Toast.LENGTH_SHORT).show()
+                        fetchCarData(code)
                     } else {
                         Log.e("Smartcar", "Auth failed: ${smartcarResponse?.toString()}")
                         Toast.makeText(applicationContext, "Login Failed", Toast.LENGTH_SHORT).show()
@@ -61,9 +61,6 @@ class MainActivity : ComponentActivity() {
                 }
             }
         )
-
-        // AUTO UPDATE
-        performSilentRefresh()
 
         setContent {
             App(
@@ -75,143 +72,81 @@ class MainActivity : ComponentActivity() {
         }
     }
 
-    // -REFRESH
-    private fun performSilentRefresh() {
-        val prefs = getSharedPreferences("smartcar_prefs", Context.MODE_PRIVATE)
-        val refreshToken = prefs.getString("refresh_token", null)
-
-        if (refreshToken != null) {
-            lifecycleScope.launch(Dispatchers.IO) {
-                try {
-                    val requestBody = FormBody.Builder()
-                        .add("grant_type", "refresh_token")
-                        .add("refresh_token", refreshToken)
-                        .build()
-
-                    val request = Request.Builder()
-                        .url("https://auth.smartcar.com/oauth/token")
-                        .header("Authorization", Credentials.basic(CLIENT_ID, CLIENT_SECRET))
-                        .post(requestBody)
-                        .build()
-
-                    val response = client.newCall(request).execute()
-                    val body = response.body?.string()
-
-                    if (response.isSuccessful && body != null) {
-                        val json = JSONObject(body)
-                        val newAccessToken = json.getString("access_token")
-                        val newRefreshToken = json.getString("refresh_token")
-
-                        saveRefreshToken(newRefreshToken)
-
-                        syncVehicleData(newAccessToken)
-
-                        withContext(Dispatchers.Main) {
-                            Toast.makeText(applicationContext, "Auto-updated Odometer!", Toast.LENGTH_SHORT).show()
-                        }
-                    } else {
-                        Log.e("Smartcar", "Refresh failed: $body")
-                    }
-                } catch (e: Exception) {
-                    Log.e("Smartcar", "Silent refresh error", e)
-                }
-            }
-        }
-    }
-
-    // INIT LOGIN
-    private fun exchangeCodeForToken(authCode: String) {
+    private fun fetchCarData(authCode: String) {
         lifecycleScope.launch(Dispatchers.IO) {
             try {
-                val requestBody = FormBody.Builder()
+                // --- STEP 1: Exchange Auth Code for Access Token ---
+                val tokenRequestBody = FormBody.Builder()
                     .add("grant_type", "authorization_code")
                     .add("code", authCode)
                     .add("redirect_uri", REDIRECT_URI)
                     .build()
 
-                val request = Request.Builder()
+                val tokenRequest = Request.Builder()
                     .url("https://auth.smartcar.com/oauth/token")
                     .header("Authorization", Credentials.basic(CLIENT_ID, CLIENT_SECRET))
-                    .post(requestBody)
+                    .post(tokenRequestBody)
                     .build()
 
-                val response = client.newCall(request).execute()
-                val body = response.body?.string()
+                val tokenResponse = client.newCall(tokenRequest).execute()
+                val tokenBody = tokenResponse.body?.string()
 
-                if (!response.isSuccessful || body == null) {
-                    throw IOException("Token Error: $body")
+                if (!tokenResponse.isSuccessful) {
+                    throw IOException("Token Error: $tokenBody")
+                }
+                val accessToken = JSONObject(tokenBody!!).getString("access_token")
+
+                // --- STEP 2: Get Vehicle ID ---
+                val vehiclesReq = Request.Builder()
+                    .url("https://api.smartcar.com/v2.0/vehicles")
+                    .header("Authorization", "Bearer $accessToken")
+                    .build()
+                val vehiclesRes = client.newCall(vehiclesReq).execute()
+                val vehicleId = JSONObject(vehiclesRes.body!!.string())
+                    .getJSONArray("vehicles").getString(0)
+
+                // --- STEP 3: Get Vehicle Info (Name) ---
+                val infoReq = Request.Builder()
+                    .url("https://api.smartcar.com/v2.0/vehicles/$vehicleId")
+                    .header("Authorization", "Bearer $accessToken")
+                    .build()
+                val infoRes = client.newCall(infoReq).execute()
+                val infoJson = JSONObject(infoRes.body!!.string())
+
+                // Create Name: "2022 TOYOTA CAMRY"
+                val year = infoJson.getInt("year")
+                val make = infoJson.getString("make")
+                val model = infoJson.getString("model")
+                val carName = "$year $make $model"
+
+                // --- STEP 4: Get Odometer ---
+                val odometerReq = Request.Builder()
+                    .url("https://api.smartcar.com/v2.0/vehicles/$vehicleId/odometer")
+                    .header("Authorization", "Bearer $accessToken")
+                    .build()
+                val odoRes = client.newCall(odometerReq).execute()
+                val odoJson = JSONObject(odoRes.body!!.string())
+
+                val kilometers = odoJson.getDouble("distance")
+                val miles = (kilometers * 0.621371).toInt()
+
+                // --- STEP 5: SAVE TO DATABASE ---
+                val newCar = CarEntity(
+                    name = carName,
+                    currentMileage = miles
+                )
+                carDao.insertCar(newCar) // <--- This line adds the car to your list!
+
+                withContext(Dispatchers.Main) {
+                    Toast.makeText(applicationContext, "Added: $carName", Toast.LENGTH_LONG).show()
                 }
 
-                val json = JSONObject(body)
-                val accessToken = json.getString("access_token")
-                val refreshToken = json.getString("refresh_token")
-
-                saveRefreshToken(refreshToken)
-
-                syncVehicleData(accessToken)
-
             } catch (e: Exception) {
+                Log.e("Smartcar", "Error", e)
                 withContext(Dispatchers.Main) {
                     Toast.makeText(applicationContext, "Error: ${e.message}", Toast.LENGTH_LONG).show()
                 }
             }
         }
-    }
-
-    // SHARED DATA FETCH
-    private suspend fun syncVehicleData(accessToken: String) {
-        try {
-            // ID
-            val vehiclesReq = Request.Builder()
-                .url("https://api.smartcar.com/v2.0/vehicles")
-                .header("Authorization", "Bearer $accessToken")
-                .build()
-            val vehiclesRes = client.newCall(vehiclesReq).execute()
-            val vehicleId = JSONObject(vehiclesRes.body!!.string()).getJSONArray("vehicles").getString(0)
-
-            // ATTRIBUTES
-            val attrReq = Request.Builder()
-                .url("https://api.smartcar.com/v2.0/vehicles/$vehicleId")
-                .header("Authorization", "Bearer $accessToken")
-                .build()
-            val attrJson = JSONObject(client.newCall(attrReq).execute().body!!.string())
-            val carName = "${attrJson.getInt("year")} ${attrJson.getString("make")} ${attrJson.getString("model")}"
-
-            // ODOMETER
-            val odoReq = Request.Builder()
-                .url("https://api.smartcar.com/v2.0/vehicles/$vehicleId/odometer")
-                .header("Authorization", "Bearer $accessToken")
-                .build()
-            val odoJson = JSONObject(client.newCall(odoReq).execute().body!!.string())
-            val miles = (odoJson.getDouble("distance") * 0.621371).toInt()
-
-            // DATABASE
-            val existingCar = carDao.getCarBySmartcarId(vehicleId)
-
-            if (existingCar != null) {
-                // UPDATE
-                val updatedCar = existingCar.copy(currentMileage = miles, name = carName)
-                carDao.updateCar(updatedCar)
-                Log.d("Smartcar", "Updated car: $carName to $miles miles")
-            } else {
-                // INSERT
-                val newCar = CarEntity(
-                    name = carName,
-                    currentMileage = miles,
-                    smartcarId = vehicleId
-                )
-                carDao.insertCar(newCar)
-                Log.d("Smartcar", "Inserted new car: $carName")
-            }
-
-        } catch (e: Exception) {
-            Log.e("Smartcar", "Sync Error", e)
-            throw e
-        }
-    }
-
-    private fun saveRefreshToken(token: String) {
-        val prefs = getSharedPreferences("smartcar_prefs", Context.MODE_PRIVATE)
-        prefs.edit { putString("refresh_token", token) }
     }
 }
