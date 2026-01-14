@@ -81,9 +81,11 @@ fun CarDetailsScreen(
             }
         }
     ) { paddingValues ->
-        Box(modifier = Modifier
-            .fillMaxSize()
-            .padding(paddingValues)) {
+        Box(
+            modifier = Modifier
+                .fillMaxSize()
+                .padding(paddingValues)
+        ) {
             if (selectedTab == 0) VehicleStatusTab(car) else ServiceRecordsTab(
                 car,
                 serviceStatuses,
@@ -110,7 +112,7 @@ fun CarHeader(car: CarEntity?) {
             lineHeight = 32.sp
         )
         Text(
-            text = "Odometer: ${car?.currentMileage ?: 0} miles",
+            text = "odometer: ${car?.currentMileage ?: 0} miles",
             fontSize = 20.sp,
             fontWeight = FontWeight.Bold,
             color = Color.Black
@@ -128,6 +130,8 @@ fun VehicleStatusTab(car: CarEntity?) {
         verticalArrangement = Arrangement.spacedBy(16.dp)
     ) {
         CarHeader(car)
+        HorizontalDivider(color = PurinBrown);
+        Spacer(modifier = Modifier.height(16.dp))
 
         Card(
             colors = CardDefaults.cardColors(containerColor = PurinBrown),
@@ -221,15 +225,16 @@ fun ServiceRecordsTab(
                         colors = ButtonDefaults.buttonColors(containerColor = PurinBrown)
                     ) { Text("Export CSV", color = Color.White) }
                 }
-                Spacer(modifier = Modifier.height(16.dp)); HorizontalDivider(color = PurinBrown); Spacer(
-                modifier = Modifier.height(16.dp)
-            )
+                Spacer(modifier = Modifier.height(16.dp));
+                HorizontalDivider(color = PurinBrown);
+                Spacer(modifier = Modifier.height(16.dp))
             }
         }
         items(serviceStatuses) { status ->
             ServiceStatusItem(
                 status = status,
-                onClick = { onServiceClick(status.name) }); Spacer(modifier = Modifier.height(16.dp))
+                onClick = { onServiceClick(status.name) });
+            Spacer(modifier = Modifier.height(16.dp))
         }
     }
 }
@@ -283,11 +288,12 @@ fun ServiceStatusItem(status: ServiceStatus, onClick: () -> Unit) {
                     Modifier.fillMaxWidth(),
                     horizontalArrangement = Arrangement.SpaceBetween
                 ) {
-                    Text("Mileage", color = Color.White, fontSize = 12.sp); Text(
-                    status.mileageText,
-                    color = Color.White,
-                    fontSize = 12.sp
-                )
+                    Text("Mileage", color = Color.White, fontSize = 12.sp);
+                    Text(
+                        status.mileageText,
+                        color = Color.White,
+                        fontSize = 12.sp
+                    )
                 }
             }
             if (status.timeProgress >= 0f) {
@@ -304,11 +310,12 @@ fun ServiceStatusItem(status: ServiceStatus, onClick: () -> Unit) {
                     Modifier.fillMaxWidth(),
                     horizontalArrangement = Arrangement.SpaceBetween
                 ) {
-                    Text("Time", color = Color.White, fontSize = 12.sp); Text(
-                    status.timeText,
-                    color = Color.White,
-                    fontSize = 12.sp
-                )
+                    Text("Time", color = Color.White, fontSize = 12.sp);
+                    Text(
+                        status.timeText,
+                        color = Color.White,
+                        fontSize = 12.sp
+                    )
                 }
             }
         }
