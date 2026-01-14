@@ -1,3 +1,4 @@
+// app/src/main/java/com/example/purincar/data/PurinCarDatabase.kt
 package com.example.purincar.data
 
 import android.content.Context
@@ -9,7 +10,14 @@ data class CarEntity(
     @PrimaryKey(autoGenerate = true) val id: Int = 0,
     val name: String,
     val currentMileage: Int,
-    val smartcarId: String? = null
+    val smartcarId: String? = null,
+
+    // NEW FIELDS
+    val fuelPercent: Double? = null,
+    val range: Double? = null,
+    val oilLife: Double? = null,
+    val tirePressure: String? = null,
+    val isLocked: Boolean? = null
 )
 
 @Entity(
@@ -41,6 +49,7 @@ interface CarDao {
     @Delete
     suspend fun deleteCar(car: CarEntity)
 
+    // Helper to find existing car so we update it instead of creating duplicates
     @Query("SELECT * FROM cars WHERE smartcarId = :smartcarId LIMIT 1")
     suspend fun getCarBySmartcarId(smartcarId: String): CarEntity?
 
@@ -60,7 +69,7 @@ interface CarDao {
     suspend fun deleteRecord(record: MaintenanceRecord)
 }
 
-@Database(entities = [CarEntity::class, MaintenanceRecord::class], version = 3) // <--- Version 3
+@Database(entities = [CarEntity::class, MaintenanceRecord::class], version = 4) // <--- Version 4
 abstract class PurinCarDatabase : RoomDatabase() {
     abstract fun carDao(): CarDao
 
@@ -71,7 +80,7 @@ abstract class PurinCarDatabase : RoomDatabase() {
         fun getDatabase(context: Context): PurinCarDatabase {
             return Instance ?: synchronized(this) {
                 Room.databaseBuilder(context, PurinCarDatabase::class.java, "purin_car_db")
-                    .fallbackToDestructiveMigration(true) // <--- Allow DB reset on schema change
+                    .fallbackToDestructiveMigration(true)
                     .build()
                     .also { Instance = it }
             }

@@ -76,7 +76,7 @@ fun CarSelectionScreen(
             onClick = onConnectSmartcar,
             modifier = Modifier
                 .align(Alignment.BottomEnd)
-                .padding(16.dp),
+                .padding(32.dp),
             containerColor = PurinBrown,
             shape = CircleShape
         ) {
