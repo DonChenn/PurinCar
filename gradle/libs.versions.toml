@@ -16,6 +16,7 @@ navigation3Runtime = "1.1.0-alpha01"
 navigationCompose = "2.9.6"
 room = "2.8.4"
 adapters = "3.2.0-alpha11"
+smartcarAuth = "4.1.3"
 ui = "1.10.0"
 transportationConsumer = "4.0.0"
 
@@ -45,6 +46,7 @@ androidx-room-runtime = { group = "androidx.room", name = "room-runtime", versio
 androidx-room-ktx = { group = "androidx.room", name = "room-ktx", version.ref = "room" }
 androidx-room-compiler = { group = "androidx.room", name = "room-compiler", version.ref = "room" }
 androidx-adapters = { group = "androidx.databinding", name = "adapters", version.ref = "adapters" }
+smartcar-auth = { module = "com.smartcar.sdk:smartcar-auth", version.ref = "smartcarAuth" }
 ui = { group = "androidx.compose.ui", name = "ui", version.ref = "ui" }
 transportation-consumer = { group = "com.google.android.libraries.mapsplatform.transportation", name = "transportation-consumer", version.ref = "transportationConsumer" }
 androidx-lifecycle-viewmodel-navigation3 = { group = "androidx.lifecycle", name = "lifecycle-viewmodel-navigation3", version.ref = "lifecycleRuntimeKtx" }

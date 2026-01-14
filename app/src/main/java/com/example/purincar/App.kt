@@ -1,5 +1,7 @@
 package com.example.purincar
 
+import android.os.Build
+import androidx.annotation.RequiresApi
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -15,8 +17,12 @@ import com.example.purincar.ui.theme.PurinBrown
 import com.example.purincar.ui.theme.PurinCarTheme
 import com.example.purincar.ui.theme.PurinYellow
 
+@RequiresApi(Build.VERSION_CODES.O)
 @Composable
-fun App(dao: CarDao) {
+fun App(
+    dao: CarDao,
+    onConnectSmartcar: () -> Unit
+) {
     PurinCarTheme {
         Column {
             Box(
@@ -31,7 +37,10 @@ fun App(dao: CarDao) {
                     .background(PurinYellow)
             ) {
                 // Pass dao to NavigationRoot
-                NavigationRoot(dao = dao)
+                NavigationRoot(
+                    dao = dao,
+                    onConnectSmartcar = onConnectSmartcar
+                )
             }
         }
     }

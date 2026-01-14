@@ -45,7 +45,8 @@ import com.example.purincar.viewmodels.CarViewModel
 @Composable
 fun CarSelectionScreen(
     viewModel: CarViewModel,
-    onCarClick: (CarDetails) -> Unit
+    onCarClick: (CarDetails) -> Unit,
+    onConnectSmartcar: () -> Unit
 ) {
     val cars by viewModel.cars.collectAsState()
 
@@ -114,6 +115,14 @@ fun CarSelectionScreen(
                         }
                     }
                 }
+            }
+        }
+        Box(modifier = Modifier.fillMaxSize().padding(top = 16.dp), contentAlignment = Alignment.TopCenter) {
+            Button(
+                onClick = onConnectSmartcar,
+                colors = ButtonDefaults.buttonColors(containerColor = PurinBrown)
+            ) {
+                Text("Import from Toyota", color = Color.White)
             }
         }
     }

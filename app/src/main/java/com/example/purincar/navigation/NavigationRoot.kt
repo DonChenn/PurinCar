@@ -24,7 +24,10 @@ import com.example.purincar.viewmodels.ServiceHistoryViewModel
 
 @RequiresApi(Build.VERSION_CODES.O)
 @Composable
-fun NavigationRoot(dao: CarDao) {
+fun NavigationRoot(
+    dao: CarDao,
+    onConnectSmartcar: () -> Unit
+) {
     val backStack = rememberNavBackStack(Route.CarSelectionScreen)
 
     NavDisplay(
@@ -57,7 +60,8 @@ fun NavigationRoot(dao: CarDao) {
                             viewModel = viewModel,
                             onCarClick = { carObject ->
                                 backStack.add(Route.CarDetailsScreen(car = carObject))
-                            }
+                            },
+                            onConnectSmartcar = onConnectSmartcar
                         )
                     }
                 }
