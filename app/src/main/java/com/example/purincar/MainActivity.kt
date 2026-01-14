@@ -50,7 +50,7 @@ class MainActivity : ComponentActivity() {
                 "read_odometer",
                 "read_security"
             ),
-            true, // Test Mode
+            false, // Test Mode
             object : SmartcarCallback {
                 override fun handleResponse(smartcarResponse: SmartcarResponse?) {
                     val code = smartcarResponse?.code
@@ -130,6 +130,7 @@ class MainActivity : ComponentActivity() {
 
                 // Fuel Level
                 val fuelJson = fetch("fuel")
+                Log.d("PurinCar", "Fuel JSON: $fuelJson")
                 val fuelPercent = fuelJson.optDouble("percentRemaining", -1.0)
 
                 // Door Locked Status (Security)

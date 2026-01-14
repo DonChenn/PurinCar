@@ -1,20 +1,12 @@
-// app/src/main/java/com/example/purincar/viewmodels/CarDetailViewModel.kt
 package com.example.purincar.viewmodels
 
-import android.content.Context
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.example.purincar.data.CarDao
 import com.example.purincar.data.CarEntity
 import com.example.purincar.data.MaintenanceRecord
-import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.*
 import kotlinx.coroutines.launch
-import okhttp3.MediaType.Companion.toMediaType
-import okhttp3.OkHttpClient
-import okhttp3.Request
-import okhttp3.RequestBody.Companion.toRequestBody
-import org.json.JSONObject
 import java.time.LocalDate
 import java.time.format.DateTimeParseException
 import java.time.temporal.ChronoUnit
@@ -31,8 +23,6 @@ class CarDetailsViewModel(
     private val dao: CarDao,
     private val carId: Int
 ) : ViewModel() {
-
-    private val client = OkHttpClient() // Added Client
 
     private val serviceTypes = listOf(
         "Engine Oil", "Air Filters", "Engine Coolant", "Brake Fluid",
@@ -86,39 +76,6 @@ class CarDetailsViewModel(
                 mileageText = "$mDriven / $mInterval mi",
                 timeText = "$daysElapsed / $tInterval days"
             )
-        }
-    }
-
-    // --- NEW: Lock/Unlock Logic ---
-    fun toggleLock(vehicleId: String, lock: Boolean, context: Context) {
-        viewModelScope.launch(Dispatchers.IO) {
-            try {
-                // Get Saved Token
-                val prefs = context.getSharedPreferences("smartcar_prefs", Context.MODE_PRIVATE)
-                val accessToken = prefs.getString("access_token", null) ?: return@launch
-
-                val action = if (lock) "LOCK" else "UNLOCK"
-                val url = "https://api.smartcar.com/v2.0/vehicles/$vehicleId/security"
-                val jsonBody = JSONObject().put("action", action).toString()
-                val body = jsonBody.toRequestBody("application/json".toMediaType())
-
-                val request = Request.Builder()
-                    .url(url)
-                    .post(body)
-                    .header("Authorization", "Bearer $accessToken")
-                    .build()
-
-                val response = client.newCall(request).execute()
-
-                if (response.isSuccessful) {
-                    val currentCar = carInfo.firstOrNull()
-                    if (currentCar != null) {
-                        dao.updateCar(currentCar.copy(isLocked = lock))
-                    }
-                }
-            } catch (e: Exception) {
-                e.printStackTrace()
-            }
         }
     }
 

@@ -1,7 +1,5 @@
 package com.example.purincar.navigation
 
-import android.os.Build
-import androidx.annotation.RequiresApi
 import androidx.compose.animation.slideInHorizontally
 import androidx.compose.animation.slideOutHorizontally
 import androidx.compose.animation.togetherWith
@@ -22,7 +20,6 @@ import com.example.purincar.viewmodels.CarDetailsViewModel
 import com.example.purincar.viewmodels.CarViewModel
 import com.example.purincar.viewmodels.ServiceHistoryViewModel
 
-@RequiresApi(Build.VERSION_CODES.O)
 @Composable
 fun NavigationRoot(
     dao: CarDao,
