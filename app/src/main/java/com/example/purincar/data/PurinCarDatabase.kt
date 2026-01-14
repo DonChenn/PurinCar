@@ -11,8 +11,6 @@ data class CarEntity(
     val name: String,
     val currentMileage: Int,
     val smartcarId: String? = null,
-
-    // NEW FIELDS
     val fuelPercent: Double? = null,
     val range: Double? = null,
     val oilLife: Double? = null,
@@ -35,7 +33,8 @@ data class MaintenanceRecord(
     val serviceType: String,
     val date: String,
     val mileageAtService: Int,
-    val description: String = ""
+    val description: String = "",
+    val cost: Double = 0.0
 )
 
 @Dao
@@ -59,6 +58,9 @@ interface CarDao {
     @Insert
     suspend fun insertRecord(record: MaintenanceRecord)
 
+    @Update
+    suspend fun updateRecord(record: MaintenanceRecord)
+
     @Query("SELECT * FROM maintenance_records WHERE carId = :carId ORDER BY date DESC")
     fun getRecordsForCar(carId: Int): Flow<List<MaintenanceRecord>>
 
@@ -69,7 +71,7 @@ interface CarDao {
     suspend fun deleteRecord(record: MaintenanceRecord)
 }
 
-@Database(entities = [CarEntity::class, MaintenanceRecord::class], version = 4) // <--- Version 4
+@Database(entities = [CarEntity::class, MaintenanceRecord::class], version = 5)
 abstract class PurinCarDatabase : RoomDatabase() {
     abstract fun carDao(): CarDao
 

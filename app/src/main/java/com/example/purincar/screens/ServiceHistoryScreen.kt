@@ -1,6 +1,9 @@
 package com.example.purincar.screens
 
+import android.app.DatePickerDialog
 import androidx.compose.foundation.background
+import androidx.compose.foundation.clickable
+import androidx.compose.foundation.combinedClickable
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
@@ -8,12 +11,13 @@ import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Add
-import androidx.compose.material.icons.filled.Delete
+import androidx.compose.material.icons.filled.DateRange
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.unit.dp
@@ -22,28 +26,58 @@ import com.example.purincar.data.MaintenanceRecord
 import com.example.purincar.ui.theme.PurinBrown
 import com.example.purincar.ui.theme.PurinYellow
 import com.example.purincar.viewmodels.ServiceHistoryViewModel
-import android.app.DatePickerDialog
-import androidx.compose.foundation.clickable
-import androidx.compose.foundation.combinedClickable
-import androidx.compose.ui.platform.LocalContext
-import androidx.compose.material.icons.filled.DateRange
 import java.util.Calendar
 
-@OptIn(ExperimentalMaterial3Api::class)
+@OptIn(
+    ExperimentalMaterial3Api::class,
+    androidx.compose.foundation.ExperimentalFoundationApi::class
+)
 @Composable
 fun ServiceHistoryScreen(
     viewModel: ServiceHistoryViewModel
 ) {
     val history by viewModel.history.collectAsState(initial = emptyList())
     val currentCarMileage by viewModel.currentMileage.collectAsState(initial = 0)
-    var showAddDialog by remember { mutableStateOf(false) }
+
+    // UI States
+    var showEntryDialog by remember { mutableStateOf(false) }
+    var showOptionsDialog by remember { mutableStateOf(false) }
     var showDeleteDialog by remember { mutableStateOf(false) }
-    var recordToDelete by remember { mutableStateOf<MaintenanceRecord?>(null) }
+
+    // Data States
+    var selectedRecord by remember { mutableStateOf<MaintenanceRecord?>(null) }
+
+    // Calculate total cost for the header (fixes the "null" issue)
+    val totalAccumulatedCost = history.sumOf { it.cost }
+
+    // Form States
+    var dateInput by remember { mutableStateOf("") }
+    var mileageInput by remember { mutableStateOf("") }
+    var costInput by remember { mutableStateOf("") }
+    var descriptionInput by remember { mutableStateOf("") }
+
+    fun openAddDialog() {
+        selectedRecord = null
+        dateInput = ""
+        mileageInput = ""
+        costInput = ""
+        descriptionInput = ""
+        showEntryDialog = true
+    }
+
+    fun openEditDialog(record: MaintenanceRecord) {
+        selectedRecord = record
+        dateInput = record.date
+        mileageInput = record.mileageAtService.toString()
+        costInput = if (record.cost > 0) record.cost.toString() else ""
+        descriptionInput = record.description
+        showEntryDialog = true
+    }
 
     Scaffold(
         floatingActionButton = {
             FloatingActionButton(
-                onClick = { showAddDialog = true },
+                onClick = { openAddDialog() },
                 containerColor = PurinBrown,
                 shape = CircleShape
             ) {
@@ -64,6 +98,16 @@ fun ServiceHistoryScreen(
                 fontWeight = FontWeight.Bold,
                 modifier = Modifier.align(Alignment.CenterHorizontally)
             )
+
+            // Header showing total accumulated costs for this service type
+            Text(
+                text = "Accumulated Costs: $${"%.2f".format(totalAccumulatedCost)}",
+                fontSize = 20.sp,
+                fontWeight = FontWeight.Bold,
+                color = Color.Black,
+                modifier = Modifier.align(Alignment.CenterHorizontally)
+            )
+
             Spacer(modifier = Modifier.height(8.dp))
             HorizontalDivider(color = PurinBrown)
             Spacer(modifier = Modifier.height(16.dp))
@@ -77,30 +121,43 @@ fun ServiceHistoryScreen(
                     verticalArrangement = Arrangement.spacedBy(8.dp)
                 ) {
                     items(history) { record ->
-
-                        var showDeleteButton by remember { mutableStateOf(false) }
-
                         Card(
                             colors = CardDefaults.cardColors(containerColor = PurinBrown),
                             modifier = Modifier
                                 .fillMaxWidth()
                                 .combinedClickable(
-                                    onClick = {
-                                        if (showDeleteButton) {
-                                            showDeleteButton = false
-                                        }
-                                    },
+                                    onClick = { /* Could expand details */ },
                                     onLongClick = {
-                                        showDeleteButton = true
+                                        selectedRecord = record
+                                        showOptionsDialog = true
                                     }
                                 )
                         ) {
-                            Box(modifier = Modifier
-                                .fillMaxWidth()
-                                .padding(16.dp)) {
-
+                            Box(
+                                modifier = Modifier
+                                    .fillMaxWidth()
+                                    .padding(16.dp)
+                            ) {
                                 Column(modifier = Modifier.align(Alignment.CenterStart)) {
-                                    Text(text = record.date, color = Color.White, fontSize = 16.sp)
+                                    Row(
+                                        modifier = Modifier.fillMaxWidth(),
+                                        horizontalArrangement = Arrangement.SpaceBetween
+                                    ) {
+                                        Text(
+                                            text = record.date,
+                                            color = Color.White,
+                                            fontSize = 16.sp
+                                        )
+                                        // Display individual record cost
+                                        if (record.cost > 0) {
+                                            Text(
+                                                text = "$${"%.2f".format(record.cost)}",
+                                                color = Color.White,
+                                                fontWeight = FontWeight.Bold
+                                            )
+                                        }
+                                    }
+
                                     Text(
                                         text = "${record.mileageAtService} miles",
                                         color = Color.White,
@@ -117,25 +174,6 @@ fun ServiceHistoryScreen(
                                         )
                                     }
                                 }
-
-                                if (showDeleteButton) {
-                                    IconButton(
-                                        onClick = {
-                                            recordToDelete = record
-                                            showDeleteDialog = true
-                                            showDeleteButton = false
-                                        },
-                                        modifier = Modifier
-                                            .align(Alignment.TopEnd)
-                                            .offset(x = 12.dp, y = (-12).dp)
-                                    ) {
-                                        Icon(
-                                            imageVector = Icons.Default.Delete,
-                                            contentDescription = "Delete Record",
-                                            tint = Color.White
-                                        )
-                                    }
-                                }
                             }
                         }
                     }
@@ -144,25 +182,40 @@ fun ServiceHistoryScreen(
         }
     }
 
-    if (showAddDialog) {
-        var dateInput by remember { mutableStateOf("") }
-        var mileageInput by remember { mutableStateOf("") }
-        var descriptionInput by remember { mutableStateOf("") }
+    // 1. Long Press Options Dialog
+    if (showOptionsDialog) {
+        AlertDialog(
+            onDismissRequest = { showOptionsDialog = false },
+            title = { Text("Options") },
+            text = { Text("Choose an action for this record.") },
+            confirmButton = {
+                TextButton(onClick = {
+                    showOptionsDialog = false
+                    selectedRecord?.let { openEditDialog(it) }
+                }) {
+                    Text("Edit")
+                }
+            },
+            dismissButton = {
+                TextButton(onClick = {
+                    showOptionsDialog = false
+                    showDeleteDialog = true
+                }) {
+                    Text("Delete", color = Color.Red)
+                }
+            }
+        )
+    }
 
-        // Date Calendar Formatting
-
+    // 2. Add / Edit Dialog
+    if (showEntryDialog) {
         val context = LocalContext.current
         val calendar = Calendar.getInstance()
-
         val datePickerDialog = DatePickerDialog(
             context,
             { _, year, month, dayOfMonth ->
-                val formattedDate = "$year-${
-                    (month + 1).toString()
-                        .padStart(2, '0')
-                }-${
-                    dayOfMonth.toString()
-                        .padStart(2, '0')
+                val formattedDate = "$year-${(month + 1).toString().padStart(2, '0')}-${
+                    dayOfMonth.toString().padStart(2, '0')
                 }"
                 dateInput = formattedDate
             },
@@ -171,11 +224,9 @@ fun ServiceHistoryScreen(
             calendar.get(Calendar.DAY_OF_MONTH)
         )
 
-        // Add service record alert dialog
-
         AlertDialog(
-            onDismissRequest = { showAddDialog = false },
-            title = { Text("Add Service Record") },
+            onDismissRequest = { showEntryDialog = false },
+            title = { Text(if (selectedRecord == null) "Add Service Record" else "Edit Service Record") },
             text = {
                 Column {
                     OutlinedTextField(
@@ -199,6 +250,7 @@ fun ServiceHistoryScreen(
                     )
 
                     Spacer(modifier = Modifier.height(8.dp))
+
                     OutlinedTextField(
                         value = mileageInput,
                         onValueChange = { mileageInput = it },
@@ -209,6 +261,17 @@ fun ServiceHistoryScreen(
                     )
 
                     Spacer(modifier = Modifier.height(8.dp))
+
+                    OutlinedTextField(
+                        value = costInput,
+                        onValueChange = { costInput = it },
+                        label = { Text("Cost") },
+                        keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Decimal),
+                        modifier = Modifier.fillMaxWidth()
+                    )
+
+                    Spacer(modifier = Modifier.height(8.dp))
+
                     OutlinedTextField(
                         value = descriptionInput,
                         onValueChange = { descriptionInput = it },
@@ -222,9 +285,21 @@ fun ServiceHistoryScreen(
                 Button(
                     onClick = {
                         val m = mileageInput.toIntOrNull()
+                        val c = costInput.toDoubleOrNull() ?: 0.0
+
                         if (dateInput.isNotBlank() && m != null) {
-                            viewModel.addRecord(dateInput, m, descriptionInput)
-                            showAddDialog = false
+                            if (selectedRecord == null) {
+                                viewModel.addRecord(dateInput, m, c, descriptionInput)
+                            } else {
+                                val updated = selectedRecord!!.copy(
+                                    date = dateInput,
+                                    mileageAtService = m,
+                                    cost = c,
+                                    description = descriptionInput
+                                )
+                                viewModel.updateRecord(updated)
+                            }
+                            showEntryDialog = false
                         }
                     },
                 ) {
@@ -232,7 +307,7 @@ fun ServiceHistoryScreen(
                 }
             },
             dismissButton = {
-                TextButton(onClick = { showAddDialog = false }) { Text("Cancel") }
+                TextButton(onClick = { showEntryDialog = false }) { Text("Cancel") }
             }
         )
     }
@@ -245,9 +320,9 @@ fun ServiceHistoryScreen(
             confirmButton = {
                 Button(
                     onClick = {
-                        recordToDelete?.let { viewModel.removeRecord(it) }
+                        selectedRecord?.let { viewModel.removeRecord(it) }
                         showDeleteDialog = false
-                        recordToDelete = null
+                        selectedRecord = null
                     },
                     colors = ButtonDefaults.buttonColors(containerColor = Color.Red)
                 ) {

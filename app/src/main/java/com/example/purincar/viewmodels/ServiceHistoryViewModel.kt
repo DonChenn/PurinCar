@@ -19,16 +19,23 @@ class ServiceHistoryViewModel(
         cars.find { it.id == carId }?.currentMileage ?: 0
     }
 
-    fun addRecord(date: String, mileage: Int, descriptionInput: String) {
+    fun addRecord(date: String, mileage: Int, cost: Double, descriptionInput: String) {
         viewModelScope.launch {
             val newRecord = MaintenanceRecord(
                 carId = carId,
                 serviceType = serviceType,
                 date = date,
                 mileageAtService = mileage,
-                description = descriptionInput
+                description = descriptionInput,
+                cost = cost
             )
             dao.insertRecord(newRecord)
+        }
+    }
+
+    fun updateRecord(record: MaintenanceRecord) {
+        viewModelScope.launch {
+            dao.updateRecord(record)
         }
     }
 

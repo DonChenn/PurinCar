@@ -102,7 +102,6 @@ fun CarHeader(car: CarEntity?) {
         horizontalAlignment = Alignment.CenterHorizontally,
         modifier = Modifier
             .fillMaxWidth()
-            .padding(bottom = 16.dp)
     ) {
         Text(
             text = car?.name ?: "Loading...",
@@ -130,8 +129,7 @@ fun VehicleStatusTab(car: CarEntity?) {
         verticalArrangement = Arrangement.spacedBy(16.dp)
     ) {
         CarHeader(car)
-        HorizontalDivider(color = PurinBrown);
-        Spacer(modifier = Modifier.height(16.dp))
+        HorizontalDivider(color = PurinBrown)
 
         Card(
             colors = CardDefaults.cardColors(containerColor = PurinBrown),
@@ -210,11 +208,13 @@ fun ServiceRecordsTab(
             .padding(start = 16.dp, end = 16.dp, bottom = 16.dp)
     ) {
         item { CarHeader(car) }
+
         item {
             Column(
                 horizontalAlignment = Alignment.CenterHorizontally,
                 modifier = Modifier.fillMaxWidth()
             ) {
+                Spacer(modifier = Modifier.height(16.dp))
                 Row(horizontalArrangement = Arrangement.spacedBy(16.dp)) {
                     Button(
                         onClick = { importLauncher.launch("*/*") },
@@ -225,15 +225,15 @@ fun ServiceRecordsTab(
                         colors = ButtonDefaults.buttonColors(containerColor = PurinBrown)
                     ) { Text("Export CSV", color = Color.White) }
                 }
-                Spacer(modifier = Modifier.height(16.dp));
-                HorizontalDivider(color = PurinBrown);
+                Spacer(modifier = Modifier.height(16.dp))
+                HorizontalDivider(color = PurinBrown)
                 Spacer(modifier = Modifier.height(16.dp))
             }
         }
         items(serviceStatuses) { status ->
             ServiceStatusItem(
                 status = status,
-                onClick = { onServiceClick(status.name) });
+                onClick = { onServiceClick(status.name) })
             Spacer(modifier = Modifier.height(16.dp))
         }
     }
@@ -288,7 +288,7 @@ fun ServiceStatusItem(status: ServiceStatus, onClick: () -> Unit) {
                     Modifier.fillMaxWidth(),
                     horizontalArrangement = Arrangement.SpaceBetween
                 ) {
-                    Text("Mileage", color = Color.White, fontSize = 12.sp);
+                    Text("Mileage", color = Color.White, fontSize = 12.sp)
                     Text(
                         status.mileageText,
                         color = Color.White,
@@ -310,7 +310,7 @@ fun ServiceStatusItem(status: ServiceStatus, onClick: () -> Unit) {
                     Modifier.fillMaxWidth(),
                     horizontalArrangement = Arrangement.SpaceBetween
                 ) {
-                    Text("Time", color = Color.White, fontSize = 12.sp);
+                    Text("Time", color = Color.White, fontSize = 12.sp)
                     Text(
                         status.timeText,
                         color = Color.White,
