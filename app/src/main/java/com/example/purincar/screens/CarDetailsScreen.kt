@@ -1,30 +1,21 @@
 package com.example.purincar.screens
 
 import android.net.Uri
-import android.os.Build
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
-import androidx.annotation.RequiresApi
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.shape.RoundedCornerShape
-import androidx.compose.foundation.text.KeyboardActions
-import androidx.compose.foundation.text.KeyboardOptions
-import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.filled.Edit
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalContext
-import androidx.compose.ui.platform.LocalFocusManager
 import androidx.compose.ui.text.font.FontWeight
-import androidx.compose.ui.text.input.ImeAction
-import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.example.purincar.ui.theme.PurinBrown
@@ -35,8 +26,6 @@ import kotlinx.coroutines.launch
 import java.io.BufferedReader
 import java.io.InputStreamReader
 
-@RequiresApi(Build.VERSION_CODES.O)
-@OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun CarDetailsScreen(
     viewModel: CarDetailsViewModel,
@@ -45,21 +34,17 @@ fun CarDetailsScreen(
     val car by viewModel.carInfo.collectAsState(initial = null)
     val serviceStatuses by viewModel.serviceStatuses.collectAsState(initial = emptyList())
 
-    var isEditingMileage by remember { mutableStateOf(false) }
-    var mileageInput by remember { mutableStateOf("") }
-    val focusManager = LocalFocusManager.current
     val context = LocalContext.current
     val scope = rememberCoroutineScope()
 
+    // CSV Import Logic (Kept this as it's useful for backups)
     val importLauncher = rememberLauncherForActivityResult(
         contract = ActivityResultContracts.GetContent()
     ) { uri: Uri? ->
         uri?.let {
             try {
-                val content = context.contentResolver.openInputStream(it)?.use { inputStream ->
-                    BufferedReader(InputStreamReader(inputStream)).readText()
-                }
-                if (content != null) {
+                context.contentResolver.openInputStream(it)?.use { inputStream ->
+                    val content = BufferedReader(InputStreamReader(inputStream)).readText()
                     viewModel.importCsv(content)
                 }
             } catch (e: Exception) {
@@ -68,6 +53,7 @@ fun CarDetailsScreen(
         }
     }
 
+    // CSV Export Logic
     val exportLauncher = rememberLauncherForActivityResult(
         contract = ActivityResultContracts.CreateDocument("text/csv")
     ) { uri: Uri? ->
@@ -85,10 +71,6 @@ fun CarDetailsScreen(
         }
     }
 
-    LaunchedEffect(car) {
-        car?.let { mileageInput = it.currentMileage.toString() }
-    }
-
     Column(
         modifier = Modifier
             .fillMaxSize()
@@ -96,6 +78,7 @@ fun CarDetailsScreen(
             .padding(16.dp),
         horizontalAlignment = Alignment.CenterHorizontally
     ) {
+        // 1. Car Name
         Text(
             text = car?.name ?: "Loading...",
             fontSize = 32.sp,
@@ -103,62 +86,19 @@ fun CarDetailsScreen(
             fontWeight = FontWeight.Bold
         )
 
-        Spacer(modifier = Modifier.height(8.dp))
+        Spacer(modifier = Modifier.height(12.dp))
 
-        // Mileage Updater
+        // 2. Mileage Display (Read-Only)
+        Text(
+            text = "Mileage: ${car?.currentMileage ?: 0} miles",
+            fontSize = 22.sp,
+            fontWeight = FontWeight.Bold,
+            color = Color.Black
+        )
 
-        Row(
-            verticalAlignment = Alignment.CenterVertically,
-            horizontalArrangement = Arrangement.Center
-        ) {
-            Text(text = "Mileage: ", fontSize = 20.sp, color = Color.Black)
+        Spacer(modifier = Modifier.height(16.dp))
 
-            if (isEditingMileage) {
-                OutlinedTextField(
-                    value = mileageInput,
-                    onValueChange = { mileageInput = it.filter { c -> c.isDigit() } },
-                    modifier = Modifier.width(120.dp),
-                    singleLine = true,
-                    keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number, imeAction = ImeAction.Done),
-                    keyboardActions = KeyboardActions(onDone = {
-                        val newMileage = mileageInput.toIntOrNull()
-                        if (newMileage != null && newMileage != car?.currentMileage) {
-                            viewModel.updateMileage(newMileage)
-                        }
-                        isEditingMileage = false
-                        focusManager.clearFocus()
-                    }),
-                    colors = OutlinedTextFieldDefaults.colors(
-                        focusedTextColor = Color.Black,
-                        unfocusedTextColor = Color.Black
-                    )
-                )
-                IconButton(onClick = {
-                    val newMileage = mileageInput.toIntOrNull()
-                    if (newMileage != null && newMileage != car?.currentMileage) {
-                        viewModel.updateMileage(newMileage)
-                    }
-                    isEditingMileage = false
-                    focusManager.clearFocus()
-                }) {
-                    Text("Save", color = PurinBrown, fontWeight = FontWeight.Bold)
-                }
-            } else {
-                Text(
-                    text = "${car?.currentMileage ?: 0}",
-                    fontSize = 20.sp,
-                    fontWeight = FontWeight.Bold
-                )
-                IconButton(onClick = { isEditingMileage = true }) {
-                    Icon(Icons.Default.Edit, contentDescription = "Edit", tint = PurinBrown)
-                }
-            }
-        }
-
-        Spacer(modifier = Modifier.height(8.dp))
-
-        // CSV Buttons
-
+        // 3. CSV Buttons (Optional, kept for utility)
         Row(horizontalArrangement = Arrangement.spacedBy(16.dp)) {
             Button(
                 onClick = { importLauncher.launch("*/*") },
@@ -179,6 +119,7 @@ fun CarDetailsScreen(
         HorizontalDivider(color = PurinBrown)
         Spacer(modifier = Modifier.height(16.dp))
 
+        // 4. Service Status List
         LazyColumn(
             modifier = Modifier.fillMaxSize(),
             verticalArrangement = Arrangement.spacedBy(16.dp)
@@ -242,7 +183,6 @@ fun ServiceStatusItem(
             Spacer(modifier = Modifier.height(8.dp))
 
             // Time Progress Bar
-
             if (status.timeProgress >= 0f) {
                 Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) {
                     Text(text = "Time", color = Color.White, fontSize = 12.sp)
