@@ -1,7 +1,5 @@
 package com.example.purincar.viewmodels
 
-import android.os.Build
-import androidx.annotation.RequiresApi
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.example.purincar.data.CarDao
@@ -12,6 +10,12 @@ import kotlinx.coroutines.launch
 import java.time.LocalDate
 import java.time.format.DateTimeParseException
 import java.time.temporal.ChronoUnit
+import androidx.lifecycle.viewModelScope
+import kotlinx.coroutines.Dispatchers
+import okhttp3.MediaType.Companion.toMediaType
+import okhttp3.Request
+import okhttp3.RequestBody.Companion.toRequestBody
+import org.json.JSONObject
 
 data class ServiceStatus(
     val name: String,
@@ -65,7 +69,6 @@ class CarDetailsViewModel(
 
     private val allRecords: Flow<List<MaintenanceRecord>> = dao.getRecordsForCar(carId)
 
-    @RequiresApi(Build.VERSION_CODES.O)
     val serviceStatuses: Flow<List<ServiceStatus>> = combine(
         carInfo,
         allRecords
@@ -189,5 +192,39 @@ class CarDetailsViewModel(
             sb.append("${record.serviceType},${record.date},${record.mileageAtService},$desc\n")
         }
         return sb.toString()
+    }
+}
+
+fun toggleLock(vehicleId: String, lock: Boolean) {
+    viewModelScope.launch(Dispatchers.IO) {
+        try {
+            // 1. Get Access Token (You should ideally store this or refresh it)
+            // For this example, we assume you have a way to provide the current token
+            val accessToken = "YOUR_ACCESS_TOKEN"
+
+            val action = if (lock) "lock" else "unlock"
+            val url = "https://api.smartcar.com/v2.0/vehicles/$vehicleId/security"
+
+            val jsonBody = JSONObject().put("action", action.uppercase()).toString()
+            val body = jsonBody.toRequestBody("application/json".toMediaType())
+
+            val request = Request.Builder()
+                .url(url)
+                .post(body)
+                .header("Authorization", "Bearer $accessToken")
+                .build()
+
+            val response = client.newCall(request).execute()
+
+            if (response.isSuccessful) {
+                // Update local database state to match the successful remote action
+                val currentCar = _carInfo.value
+                if (currentCar != null) {
+                    dao.updateCar(currentCar.copy(isLocked = lock))
+                }
+            }
+        } catch (e: Exception) {
+            e.printStackTrace()
+        }
     }
 }

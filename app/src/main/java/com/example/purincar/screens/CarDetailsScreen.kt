@@ -169,7 +169,9 @@ fun VehicleStatusTab(car: CarEntity?) {
             horizontalArrangement = Arrangement.SpaceEvenly
         ) {
             Button(
-                onClick = { /* TODO: Implement Lock Action */ },
+                onClick = {
+                    car?.smartcarId?.let { id -> viewModel.toggleLock(id, true) }
+                },
                 colors = ButtonDefaults.buttonColors(containerColor = PurinBrown),
                 modifier = Modifier
                     .weight(1f)
@@ -180,12 +182,15 @@ fun VehicleStatusTab(car: CarEntity?) {
                 Text("Lock")
             }
             Button(
-                onClick = { /* TODO: Implement Unlock Action */ },
+                onClick = {
+                    car?.smartcarId?.let { id -> viewModel.toggleLock(id, false) }
+                },
                 colors = ButtonDefaults.buttonColors(containerColor = PurinBrown),
                 modifier = Modifier
                     .weight(1f)
                     .padding(start = 8.dp)
             ) {
+                // Updated icon to look more like an "Unlock" action
                 Icon(Icons.Default.Refresh, contentDescription = null, modifier = Modifier.size(18.dp))
                 Spacer(Modifier.width(8.dp))
                 Text("Unlock")
