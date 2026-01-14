@@ -1,21 +1,23 @@
+// app/src/main/java/com/example/purincar/viewmodels/CarDetailViewModel.kt
 package com.example.purincar.viewmodels
 
+import android.content.Context
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.example.purincar.data.CarDao
 import com.example.purincar.data.CarEntity
 import com.example.purincar.data.MaintenanceRecord
+import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.*
 import kotlinx.coroutines.launch
-import java.time.LocalDate
-import java.time.format.DateTimeParseException
-import java.time.temporal.ChronoUnit
-import androidx.lifecycle.viewModelScope
-import kotlinx.coroutines.Dispatchers
 import okhttp3.MediaType.Companion.toMediaType
+import okhttp3.OkHttpClient
 import okhttp3.Request
 import okhttp3.RequestBody.Companion.toRequestBody
 import org.json.JSONObject
+import java.time.LocalDate
+import java.time.format.DateTimeParseException
+import java.time.temporal.ChronoUnit
 
 data class ServiceStatus(
     val name: String,
@@ -30,38 +32,24 @@ class CarDetailsViewModel(
     private val carId: Int
 ) : ViewModel() {
 
+    private val client = OkHttpClient() // Added Client
+
     private val serviceTypes = listOf(
-        "Engine Oil",
-        "Air Filters",
-        "Engine Coolant",
-        "Brake Fluid",
-        "Battery Fan",
-        "Transmission Fluid",
-        "Spark Plugs",
-        "Miscellaneous"
+        "Engine Oil", "Air Filters", "Engine Coolant", "Brake Fluid",
+        "Battery Fan", "Transmission Fluid", "Spark Plugs", "Miscellaneous"
     )
 
     private val mileageIntervals = mapOf(
-        "Engine Oil" to 5000,
-        "Air Filters" to 15000,
-        "Engine Coolant" to 30000,
-        "Brake Fluid" to 30000,
-        "Battery Fan" to 30000,
-        "Transmission Fluid" to 60000,
-        "Spark Plugs" to 100000,
-        "Miscellaneous" to 0,
+        "Engine Oil" to 5000, "Air Filters" to 15000, "Engine Coolant" to 30000,
+        "Brake Fluid" to 30000, "Battery Fan" to 30000, "Transmission Fluid" to 60000,
+        "Spark Plugs" to 100000, "Miscellaneous" to 0
     )
 
     private val timeIntervals = mapOf(
-        "Engine Oil" to 180,
-        "Air Filters" to 365,
-        "Engine Coolant" to 730,
-        "Brake Fluid" to 730,
-        "Battery Fan" to 1095,
-        "Transmission Fluid" to 1460,
-        "Spark Plugs" to 1825,
-        "Miscellaneous" to 0,
-        )
+        "Engine Oil" to 180, "Air Filters" to 365, "Engine Coolant" to 730,
+        "Brake Fluid" to 730, "Battery Fan" to 1095, "Transmission Fluid" to 1460,
+        "Spark Plugs" to 1825, "Miscellaneous" to 0
+    )
 
     val carInfo: Flow<CarEntity?> = dao.getAllCars().map { list ->
         list.find { it.id == carId }
@@ -69,43 +57,27 @@ class CarDetailsViewModel(
 
     private val allRecords: Flow<List<MaintenanceRecord>> = dao.getRecordsForCar(carId)
 
-    val serviceStatuses: Flow<List<ServiceStatus>> = combine(
-        carInfo,
-        allRecords
-    ) { car, records ->
+    val serviceStatuses: Flow<List<ServiceStatus>> = combine(carInfo, allRecords) { car, records ->
         val currentMileage = car?.currentMileage ?: 0
         val currentDate = LocalDate.now()
 
         serviceTypes.map { type ->
-            val lastRecord = records
-                .filter { it.serviceType == type }
-                .maxByOrNull { it.mileageAtService }
-
+            val lastRecord = records.filter { it.serviceType == type }.maxByOrNull { it.mileageAtService }
             val lastMileage = lastRecord?.mileageAtService ?: 0
             val mInterval = mileageIntervals[type] ?: 5000
             val mDriven = (currentMileage - lastMileage).coerceAtLeast(0)
-            val mProgress = if (mInterval > 0) {
-                (mDriven.toFloat() / mInterval.toFloat()).coerceIn(0f, 1f)
-            } else {
-                -1f
-            }
+            val mProgress = if (mInterval > 0) (mDriven.toFloat() / mInterval.toFloat()).coerceIn(0f, 1f) else -1f
+
             val lastDateStr = lastRecord?.date
             val daysElapsed = if (lastDateStr != null) {
                 try {
                     val lastDate = LocalDate.parse(lastDateStr)
                     ChronoUnit.DAYS.between(lastDate, currentDate).toInt().coerceAtLeast(0)
-                } catch (e: DateTimeParseException) {
-                    0
-                }
-            } else {
-                0
-            }
+                } catch (e: DateTimeParseException) { 0 }
+            } else { 0 }
+
             val tInterval = timeIntervals[type] ?: 365
-            val tProgress = if (tInterval > 0) {
-                (daysElapsed.toFloat() / tInterval.toFloat()).coerceIn(0f, 1f)
-            } else {
-                -1f
-            }
+            val tProgress = if (tInterval > 0) (daysElapsed.toFloat() / tInterval.toFloat()).coerceIn(0f, 1f) else -1f
 
             ServiceStatus(
                 name = type,
@@ -114,6 +86,39 @@ class CarDetailsViewModel(
                 mileageText = "$mDriven / $mInterval mi",
                 timeText = "$daysElapsed / $tInterval days"
             )
+        }
+    }
+
+    // --- NEW: Lock/Unlock Logic ---
+    fun toggleLock(vehicleId: String, lock: Boolean, context: Context) {
+        viewModelScope.launch(Dispatchers.IO) {
+            try {
+                // Get Saved Token
+                val prefs = context.getSharedPreferences("smartcar_prefs", Context.MODE_PRIVATE)
+                val accessToken = prefs.getString("access_token", null) ?: return@launch
+
+                val action = if (lock) "LOCK" else "UNLOCK"
+                val url = "https://api.smartcar.com/v2.0/vehicles/$vehicleId/security"
+                val jsonBody = JSONObject().put("action", action).toString()
+                val body = jsonBody.toRequestBody("application/json".toMediaType())
+
+                val request = Request.Builder()
+                    .url(url)
+                    .post(body)
+                    .header("Authorization", "Bearer $accessToken")
+                    .build()
+
+                val response = client.newCall(request).execute()
+
+                if (response.isSuccessful) {
+                    val currentCar = carInfo.firstOrNull()
+                    if (currentCar != null) {
+                        dao.updateCar(currentCar.copy(isLocked = lock))
+                    }
+                }
+            } catch (e: Exception) {
+                e.printStackTrace()
+            }
         }
     }
 
@@ -130,20 +135,14 @@ class CarDetailsViewModel(
         viewModelScope.launch {
             val lines = csvContent.lines()
             var maxMileageFound = 0
-
             val currentCar = carInfo.firstOrNull()
-            if (currentCar != null) {
-                maxMileageFound = currentCar.currentMileage
-            }
+            if (currentCar != null) maxMileageFound = currentCar.currentMileage
 
             val dataLines = if (lines.isNotEmpty() && lines[0].startsWith("Type")) lines.drop(1) else lines
 
             dataLines.forEach { line ->
                 if (line.isBlank()) return@forEach
-
-                // allows commas in descriptions
                 val parts = line.split(",(?=(?:[^\"]*\"[^\"]*\")*[^\"]*$)".toRegex())
-
                 if (parts.size >= 3) {
                     val type = parts[0].trim()
                     val date = parts[1].trim()
@@ -151,27 +150,14 @@ class CarDetailsViewModel(
                     var description = if (parts.size >= 4) parts[3].trim() else ""
                     description = description.removeSurrounding("\"").replace("\"\"", "\"")
 
-                    if (mileage > maxMileageFound) {
-                        maxMileageFound = mileage
-                    }
+                    if (mileage > maxMileageFound) maxMileageFound = mileage
 
-                    val appServiceType = serviceTypes.find {
-                        it.equals(type, ignoreCase = true) || it.contains(type, ignoreCase = true)
-                    }
-
+                    val appServiceType = serviceTypes.find { it.equals(type, ignoreCase = true) || it.contains(type, ignoreCase = true) }
                     if (appServiceType != null) {
-                        val newRecord = MaintenanceRecord(
-                            carId = carId,
-                            serviceType = appServiceType,
-                            date = date,
-                            mileageAtService = mileage,
-                            description = description
-                        )
-                        dao.insertRecord(newRecord)
+                        dao.insertRecord(MaintenanceRecord(carId = carId, serviceType = appServiceType, date = date, mileageAtService = mileage, description = description))
                     }
                 }
             }
-
             if (currentCar != null && maxMileageFound > currentCar.currentMileage) {
                 dao.updateCar(currentCar.copy(currentMileage = maxMileageFound))
             }
@@ -182,49 +168,11 @@ class CarDetailsViewModel(
         val records = allRecords.first()
         val sb = StringBuilder()
         sb.append("Type,Date,Mileage,Description\n")
-
         records.forEach { record ->
             var desc = record.description.replace("\"", "\"\"")
-            if (desc.contains(",")) {
-                desc = "\"$desc\""
-            }
-
+            if (desc.contains(",")) desc = "\"$desc\""
             sb.append("${record.serviceType},${record.date},${record.mileageAtService},$desc\n")
         }
         return sb.toString()
-    }
-}
-
-fun toggleLock(vehicleId: String, lock: Boolean) {
-    viewModelScope.launch(Dispatchers.IO) {
-        try {
-            // 1. Get Access Token (You should ideally store this or refresh it)
-            // For this example, we assume you have a way to provide the current token
-            val accessToken = "YOUR_ACCESS_TOKEN"
-
-            val action = if (lock) "lock" else "unlock"
-            val url = "https://api.smartcar.com/v2.0/vehicles/$vehicleId/security"
-
-            val jsonBody = JSONObject().put("action", action.uppercase()).toString()
-            val body = jsonBody.toRequestBody("application/json".toMediaType())
-
-            val request = Request.Builder()
-                .url(url)
-                .post(body)
-                .header("Authorization", "Bearer $accessToken")
-                .build()
-
-            val response = client.newCall(request).execute()
-
-            if (response.isSuccessful) {
-                // Update local database state to match the successful remote action
-                val currentCar = _carInfo.value
-                if (currentCar != null) {
-                    dao.updateCar(currentCar.copy(isLocked = lock))
-                }
-            }
-        } catch (e: Exception) {
-            e.printStackTrace()
-        }
     }
 }
