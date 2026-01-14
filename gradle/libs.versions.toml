@@ -16,7 +16,7 @@ navigation3Runtime = "1.1.0-alpha01"
 navigationCompose = "2.9.6"
 room = "2.8.4"
 adapters = "3.2.0-alpha11"
-smartcarAuth = "4.1.3"
+smartcarAuth = "4.1.2"
 ui = "1.10.0"
 transportationConsumer = "4.0.0"
 
