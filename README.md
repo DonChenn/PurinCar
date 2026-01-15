@@ -9,7 +9,7 @@
 
 <br />
 
-Purin Car is an Android application built to extend the lifespan of my car (2025 Toyota Camry) to hopefully **300,000+ miles**. 
+Purin Car is an Android Jetpack Compose application built to extend the lifespan of my car (2025 Toyota Camry) to hopefully **300,000+ miles**. 
 It tracks maintenance schedules based on mileage or time intervals whichever comes first ensuring NO service is overlooked.
 
 ## Features
