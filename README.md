@@ -1,6 +1,6 @@
 # Purin Car 🚗
 
-### Maintenance & Service Tracker for 2025 Toyota Camry
+### Maintenance & Service Tracker for Cars
 
 <div align="center">
   <img width="1920" height="1080" alt="thumbnail" src="https://github.com/user-attachments/assets/9074d786-90ec-465e-810e-c5e4db352a31" />
