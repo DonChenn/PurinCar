@@ -30,6 +30,7 @@ import kotlinx.coroutines.launch
 import java.io.BufferedReader
 import java.io.InputStreamReader
 import androidx.compose.runtime.saveable.rememberSaveable
+import androidx.compose.ui.unit.LayoutDirection
 
 @Composable
 fun CarDetailsScreen(
@@ -84,7 +85,12 @@ fun CarDetailsScreen(
         Box(
             modifier = Modifier
                 .fillMaxSize()
-                .padding(paddingValues)
+                .padding(
+                    start = paddingValues.calculateStartPadding(LayoutDirection.Ltr),
+                    end = paddingValues.calculateEndPadding(LayoutDirection.Ltr),
+                    bottom = paddingValues.calculateBottomPadding(),
+                    top = 16.dp
+                )
         ) {
             if (selectedTab == 0) VehicleStatusTab(car) else ServiceRecordsTab(
                 car,
