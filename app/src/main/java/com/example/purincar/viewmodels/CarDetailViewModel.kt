@@ -113,11 +113,20 @@ class CarDetailsViewModel(
             dataLines.forEach { line ->
                 if (line.isBlank()) return@forEach
                 val parts = line.split(",(?=(?:[^\"]*\"[^\"]*\")*[^\"]*$)".toRegex())
+
                 if (parts.size >= 3) {
                     val type = parts[0].trim()
                     val date = parts[1].trim()
                     val mileage = parts[2].trim().toIntOrNull() ?: 0
-                    var description = if (parts.size >= 4) parts[3].trim() else ""
+
+                    // NEW: Parse Cost from the 4th column (index 3)
+                    val cost = if (parts.size >= 4) {
+                        parts[3].trim().toDoubleOrNull() ?: 0.0
+                    } else {
+                        0.0
+                    }
+
+                    var description = if (parts.size >= 5) parts[4].trim() else ""
                     description = description.removeSurrounding("\"").replace("\"\"", "\"")
 
                     if (mileage > maxMileageFound) maxMileageFound = mileage
@@ -135,6 +144,7 @@ class CarDetailsViewModel(
                                 serviceType = appServiceType,
                                 date = date,
                                 mileageAtService = mileage,
+                                cost = cost, // Pass the parsed cost here
                                 description = description
                             )
                         )
@@ -150,11 +160,14 @@ class CarDetailsViewModel(
     suspend fun generateCsvExport(): String {
         val records = allRecords.first()
         val sb = StringBuilder()
-        sb.append("Type,Date,Mileage,Description\n")
+
+        sb.append("Type,Date,Mileage,Cost,Description\n")
+
         records.forEach { record ->
             var desc = record.description.replace("\"", "\"\"")
             if (desc.contains(",")) desc = "\"$desc\""
-            sb.append("${record.serviceType},${record.date},${record.mileageAtService},$desc\n")
+
+            sb.append("${record.serviceType},${record.date},${record.mileageAtService},${record.cost},$desc\n")
         }
         return sb.toString()
     }
