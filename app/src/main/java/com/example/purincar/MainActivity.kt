@@ -82,7 +82,7 @@ class MainActivity : ComponentActivity() {
     }
 
     /**
-     * 1. Manual Login Flow: Exchanges the Auth Code for an Access Token
+     * 1. Manual Login Flow: Exchanges the Auth Code for Access Token
      */
     private fun exchangeCodeForToken(authCode: String) {
         lifecycleScope.launch(Dispatchers.IO) {
