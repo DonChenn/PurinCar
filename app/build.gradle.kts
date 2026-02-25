@@ -68,6 +68,7 @@ dependencies {
     implementation(libs.androidx.adapters)
     implementation(libs.ui)
     implementation(libs.transportation.consumer)
+    implementation(libs.androidx.runtime)
     testImplementation(libs.junit)
     androidTestImplementation(libs.androidx.junit)
     androidTestImplementation(libs.androidx.espresso.core)

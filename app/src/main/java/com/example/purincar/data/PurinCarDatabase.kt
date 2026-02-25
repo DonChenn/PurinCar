@@ -3,6 +3,7 @@ package com.example.purincar.data
 
 import android.content.Context
 import androidx.room.*
+import androidx.room.RoomDatabase
 import kotlinx.coroutines.flow.Flow
 
 @Entity(tableName = "cars")

@@ -118,8 +118,6 @@ class CarDetailsViewModel(
                     val type = parts[0].trim()
                     val date = parts[1].trim()
                     val mileage = parts[2].trim().toIntOrNull() ?: 0
-
-                    // NEW: Parse Cost from the 4th column (index 3)
                     val cost = if (parts.size >= 4) {
                         parts[3].trim().toDoubleOrNull() ?: 0.0
                     } else {
