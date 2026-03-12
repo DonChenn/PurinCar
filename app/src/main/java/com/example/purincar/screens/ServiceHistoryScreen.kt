@@ -26,7 +26,13 @@ import com.example.purincar.data.MaintenanceRecord
 import com.example.purincar.ui.theme.PurinBrown
 import com.example.purincar.ui.theme.PurinYellow
 import com.example.purincar.viewmodels.ServiceHistoryViewModel
+import java.time.LocalDate
+import java.time.format.DateTimeFormatter
 import java.util.Calendar
+
+private fun formatDate(isoDate: String): String = try {
+    LocalDate.parse(isoDate).format(DateTimeFormatter.ofPattern("MMMM d, yyyy"))
+} catch (e: Exception) { isoDate }
 
 @OptIn(
     ExperimentalMaterial3Api::class,
@@ -144,7 +150,7 @@ fun ServiceHistoryScreen(
                                         horizontalArrangement = Arrangement.SpaceBetween
                                     ) {
                                         Text(
-                                            text = record.date,
+                                            text = formatDate(record.date),
                                             color = Color.White,
                                             fontSize = 16.sp
                                         )
@@ -230,9 +236,9 @@ fun ServiceHistoryScreen(
             text = {
                 Column {
                     OutlinedTextField(
-                        value = dateInput,
+                        value = if (dateInput.isNotBlank()) formatDate(dateInput) else "",
                         onValueChange = { },
-                        label = { Text("Date (YYYY-MM-DD)") },
+                        label = { Text("Date") },
                         modifier = Modifier
                             .fillMaxWidth()
                             .clickable { datePickerDialog.show() },

@@ -12,18 +12,20 @@ import androidx.navigation3.runtime.NavEntry
 import androidx.navigation3.runtime.rememberNavBackStack
 import androidx.navigation3.runtime.rememberSaveableStateHolderNavEntryDecorator
 import androidx.navigation3.ui.NavDisplay
-import com.example.purincar.data.CarDao
+import com.example.purincar.data.repository.PurinCarRepository
 import com.example.purincar.screens.CarDetailsScreen
 import com.example.purincar.screens.CarSelectionScreen
 import com.example.purincar.screens.ServiceHistoryScreen
 import com.example.purincar.viewmodels.CarDetailsViewModel
 import com.example.purincar.viewmodels.CarViewModel
+import com.example.purincar.viewmodels.GasViewModel
 import com.example.purincar.viewmodels.ServiceHistoryViewModel
 
 @Composable
 fun NavigationRoot(
-    dao: CarDao,
-    onConnectSmartcar: () -> Unit
+    repository: PurinCarRepository,
+    onConnectSmartcar: () -> Unit,
+    onRefreshSmartcar: () -> Unit
 ) {
     val backStack = rememberNavBackStack(Route.CarSelectionScreen)
 
@@ -49,7 +51,7 @@ fun NavigationRoot(
                         val viewModel = viewModel<CarViewModel>(
                             factory = object : ViewModelProvider.Factory {
                                 override fun <T : ViewModel> create(modelClass: Class<T>): T {
-                                    return CarViewModel(dao) as T
+                                    return CarViewModel(repository) as T
                                 }
                             }
                         )
@@ -68,15 +70,24 @@ fun NavigationRoot(
                         val viewModel = viewModel<CarDetailsViewModel>(
                             factory = object : ViewModelProvider.Factory {
                                 override fun <T : ViewModel> create(modelClass: Class<T>): T {
-                                    return CarDetailsViewModel(dao, key.car.id) as T
+                                    return CarDetailsViewModel(repository, key.car.id) as T
+                                }
+                            }
+                        )
+                        val gasViewModel = viewModel<GasViewModel>(
+                            factory = object : ViewModelProvider.Factory {
+                                override fun <T : ViewModel> create(modelClass: Class<T>): T {
+                                    return GasViewModel(repository, key.car.id) as T
                                 }
                             }
                         )
                         CarDetailsScreen(
                             viewModel = viewModel,
+                            gasViewModel = gasViewModel,
                             onServiceClick = { serviceType ->
                                 backStack.add(Route.ServiceHistory(key.car.id, serviceType))
-                            }
+                            },
+                            onRefreshSmartcar = onRefreshSmartcar
                         )
                     }
                 }
@@ -87,7 +98,7 @@ fun NavigationRoot(
                             factory = object : ViewModelProvider.Factory {
                                 override fun <T : ViewModel> create(modelClass: Class<T>): T {
                                     return ServiceHistoryViewModel(
-                                        dao,
+                                        repository,
                                         key.carId,
                                         key.serviceType
                                     ) as T

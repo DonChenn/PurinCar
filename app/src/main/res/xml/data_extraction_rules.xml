@@ -5,10 +5,10 @@
 -->
 <data-extraction-rules>
     <cloud-backup>
-        <!-- TODO: Use <include> and <exclude> to control what is backed up.
-        <include .../>
-        <exclude .../>
-        -->
+        <exclude domain="database" path="purin_car_db"/>
+        <exclude domain="database" path="purin_car_db-shm"/>
+        <exclude domain="database" path="purin_car_db-wal"/>
+        <exclude domain="sharedpref" path="smartcar_prefs"/>
     </cloud-backup>
     <!--
     <device-transfer>

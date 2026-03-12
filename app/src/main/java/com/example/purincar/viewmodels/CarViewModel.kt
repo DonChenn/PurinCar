@@ -2,8 +2,8 @@ package com.example.purincar.viewmodels
 
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
-import com.example.purincar.data.CarDao
 import com.example.purincar.data.CarEntity
+import com.example.purincar.data.repository.PurinCarRepository
 import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.map
@@ -18,8 +18,8 @@ data class CarDetails(
     val currentMileage: Int
 )
 
-class CarViewModel(private val dao: CarDao) : ViewModel() {
-    val cars: StateFlow<List<CarDetails>> = dao.getAllCars()
+class CarViewModel(private val repository: PurinCarRepository) : ViewModel() {
+    val cars: StateFlow<List<CarDetails>> = repository.getAllCars()
         .map { entities ->
             entities.map { CarDetails(it.id, it.name, it.currentMileage) }
         }
@@ -28,20 +28,15 @@ class CarViewModel(private val dao: CarDao) : ViewModel() {
     fun addCar(car: CarDetails) {
         if (car.name.isNotBlank()) {
             viewModelScope.launch {
-                dao.insertCar(CarEntity(name = car.name, currentMileage = car.currentMileage))
+                repository.insertCar(CarEntity(name = car.name, currentMileage = car.currentMileage))
             }
         }
     }
 
     fun removeCar(car: CarDetails) {
         viewModelScope.launch {
-            dao.deleteCar(
-                CarEntity(
-                    id = car.id,
-                    name = car.name,
-                    currentMileage = car.currentMileage
-                )
-            )
+            val entity = repository.getCarById(car.id) ?: return@launch
+            repository.deleteCar(entity)
         }
     }
 }

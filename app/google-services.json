@@ -1,0 +1,47 @@
+{
+  "project_info": {
+    "project_number": "332977304952",
+    "project_id": "purin-car",
+    "storage_bucket": "purin-car.firebasestorage.app"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:332977304952:android:b4ead81414a288acbb048d",
+        "android_client_info": {
+          "package_name": "com.example.purincar"
+        }
+      },
+      "oauth_client": [
+        {
+          "client_id": "332977304952-3mejpku3u33n6c7hruj6ptnrla3cv69v.apps.googleusercontent.com",
+          "client_type": 1,
+          "android_info": {
+            "package_name": "com.example.purincar",
+            "certificate_hash": "a5a5a3f2b44ed52e0460063ae22c26605bd54b60"
+          }
+        },
+        {
+          "client_id": "332977304952-u719ho4hv5tbu9d3s0ugk1l66g2k7hap.apps.googleusercontent.com",
+          "client_type": 3
+        }
+      ],
+      "api_key": [
+        {
+          "current_key": "AIzaSyAdbuueaYvadO_z0UnTtLQuIwJgrgyJo_I"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": [
+            {
+              "client_id": "332977304952-u719ho4hv5tbu9d3s0ugk1l66g2k7hap.apps.googleusercontent.com",
+              "client_type": 3
+            }
+          ]
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}

@@ -9,7 +9,7 @@ import androidx.compose.foundation.layout.size
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.unit.dp
-import com.example.purincar.data.CarDao
+import com.example.purincar.data.repository.PurinCarRepository
 import com.example.purincar.navigation.NavigationRoot
 import com.example.purincar.ui.theme.PurinBrown
 import com.example.purincar.ui.theme.PurinCarTheme
@@ -17,8 +17,9 @@ import com.example.purincar.ui.theme.PurinYellow
 
 @Composable
 fun App(
-    dao: CarDao,
-    onConnectSmartcar: () -> Unit
+    repository: PurinCarRepository,
+    onConnectSmartcar: () -> Unit,
+    onRefreshSmartcar: () -> Unit
 ) {
     PurinCarTheme {
         Column {
@@ -33,10 +34,10 @@ fun App(
                     .fillMaxSize()
                     .background(PurinYellow)
             ) {
-                // Pass dao to NavigationRoot
                 NavigationRoot(
-                    dao = dao,
-                    onConnectSmartcar = onConnectSmartcar
+                    repository = repository,
+                    onConnectSmartcar = onConnectSmartcar,
+                    onRefreshSmartcar = onRefreshSmartcar
                 )
             }
         }

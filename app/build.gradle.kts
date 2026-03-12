@@ -14,6 +14,7 @@ plugins {
     alias(libs.plugins.kotlin.compose)
     alias(libs.plugins.kotlin.serialization)
     alias(libs.plugins.ksp)
+    alias(libs.plugins.google.services)
 }
 
 android {
@@ -27,6 +28,7 @@ android {
         versionCode = 1
         versionName = "1.0"
         buildConfigField("String", "SMARTCAR_CLIENT_SECRET", "\"${localProperties["SMARTCAR_CLIENT_SECRET"]}\"")
+        buildConfigField("String", "SMARTCAR_CLIENT_ID", "\"${localProperties["SMARTCAR_CLIENT_ID"]}\"")
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
     }
 
@@ -88,5 +90,12 @@ dependencies {
     implementation(libs.kotlinx.serialization.json)
     implementation(libs.smartcar.auth)
     implementation("com.squareup.okhttp3:okhttp:4.12.0")
+    implementation("androidx.work:work-runtime-ktx:2.10.0")
+    implementation(libs.androidx.security.crypto)
     implementation("androidx.lifecycle:lifecycle-viewmodel-ktx:2.8.7")
+    implementation(platform(libs.firebase.bom))
+    implementation(libs.firebase.auth)
+    implementation(libs.firebase.firestore)
+    implementation(libs.play.services.auth)
+    implementation("org.jetbrains.kotlinx:kotlinx-coroutines-play-services:1.8.1")
 }

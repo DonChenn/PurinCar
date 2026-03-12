@@ -2,9 +2,10 @@ package com.example.purincar.viewmodels
 
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
-import com.example.purincar.data.CarDao
 import com.example.purincar.data.CarEntity
+import com.example.purincar.data.GasRecord
 import com.example.purincar.data.MaintenanceRecord
+import com.example.purincar.data.repository.PurinCarRepository
 import kotlinx.coroutines.flow.*
 import kotlinx.coroutines.launch
 import java.time.LocalDate
@@ -20,7 +21,7 @@ data class ServiceStatus(
 )
 
 class CarDetailsViewModel(
-    private val dao: CarDao,
+    private val repository: PurinCarRepository,
     private val carId: Int
 ) : ViewModel() {
 
@@ -41,11 +42,12 @@ class CarDetailsViewModel(
         "Spark Plugs" to 1825, "Miscellaneous" to 0
     )
 
-    val carInfo: Flow<CarEntity?> = dao.getAllCars().map { list ->
+    val carInfo: Flow<CarEntity?> = repository.getAllCars().map { list ->
         list.find { it.id == carId }
     }
 
-    private val allRecords: Flow<List<MaintenanceRecord>> = dao.getRecordsForCar(carId)
+    private val allRecords: Flow<List<MaintenanceRecord>> = repository.getRecordsForCar(carId)
+    private val allGasRecords: Flow<List<GasRecord>> = repository.getGasRecordsForCar(carId)
 
     val serviceStatuses: Flow<List<ServiceStatus>> = combine(carInfo, allRecords) { car, records ->
         val currentMileage = car?.currentMileage ?: 0
@@ -95,7 +97,7 @@ class CarDetailsViewModel(
         viewModelScope.launch {
             val currentCar = carInfo.firstOrNull()
             if (currentCar != null) {
-                dao.updateCar(currentCar.copy(currentMileage = newMileage))
+                repository.updateCar(currentCar.copy(currentMileage = newMileage))
             }
         }
     }
@@ -117,56 +119,64 @@ class CarDetailsViewModel(
                 if (parts.size >= 3) {
                     val type = parts[0].trim()
                     val date = parts[1].trim()
-                    val mileage = parts[2].trim().toIntOrNull() ?: 0
-                    val cost = if (parts.size >= 4) {
-                        parts[3].trim().toDoubleOrNull() ?: 0.0
+
+                    if (type.equals("Gas", ignoreCase = true)) {
+                        val cost = parts.getOrNull(3)?.trim()?.toDoubleOrNull() ?: 0.0
+                        var notes = parts.getOrNull(4)?.trim() ?: ""
+                        notes = notes.removeSurrounding("\"").replace("\"\"", "\"")
+                        val gallons = parts.getOrNull(5)?.trim()?.toDoubleOrNull() ?: 0.0
+                        repository.insertGasRecord(GasRecord(carId = carId, date = date, gallons = gallons, totalCost = cost, notes = notes))
                     } else {
-                        0.0
-                    }
+                        val mileage = parts[2].trim().toIntOrNull() ?: 0
+                        val cost = parts.getOrNull(3)?.trim()?.toDoubleOrNull() ?: 0.0
+                        var description = parts.getOrNull(4)?.trim() ?: ""
+                        description = description.removeSurrounding("\"").replace("\"\"", "\"")
 
-                    var description = if (parts.size >= 5) parts[4].trim() else ""
-                    description = description.removeSurrounding("\"").replace("\"\"", "\"")
+                        if (mileage > maxMileageFound) maxMileageFound = mileage
 
-                    if (mileage > maxMileageFound) maxMileageFound = mileage
-
-                    val appServiceType = serviceTypes.find {
-                        it.equals(type, ignoreCase = true) || it.contains(
-                            type,
-                            ignoreCase = true
-                        )
-                    }
-                    if (appServiceType != null) {
-                        dao.insertRecord(
-                            MaintenanceRecord(
-                                carId = carId,
-                                serviceType = appServiceType,
-                                date = date,
-                                mileageAtService = mileage,
-                                cost = cost, // Pass the parsed cost here
-                                description = description
+                        val appServiceType = serviceTypes.find {
+                            it.equals(type, ignoreCase = true) || it.contains(type, ignoreCase = true)
+                        }
+                        if (appServiceType != null) {
+                            repository.insertRecord(
+                                MaintenanceRecord(
+                                    carId = carId,
+                                    serviceType = appServiceType,
+                                    date = date,
+                                    mileageAtService = mileage,
+                                    cost = cost,
+                                    description = description
+                                )
                             )
-                        )
+                        }
                     }
                 }
             }
             if (currentCar != null && maxMileageFound > currentCar.currentMileage) {
-                dao.updateCar(currentCar.copy(currentMileage = maxMileageFound))
+                repository.updateCar(currentCar.copy(currentMileage = maxMileageFound))
             }
         }
     }
 
     suspend fun generateCsvExport(): String {
         val records = allRecords.first()
+        val gasRecords = allGasRecords.first()
         val sb = StringBuilder()
 
-        sb.append("Type,Date,Mileage,Cost,Description\n")
+        sb.append("Type,Date,Mileage,Cost,Description,Gallons\n")
 
         records.forEach { record ->
             var desc = record.description.replace("\"", "\"\"")
             if (desc.contains(",")) desc = "\"$desc\""
-
-            sb.append("${record.serviceType},${record.date},${record.mileageAtService},${record.cost},$desc\n")
+            sb.append("${record.serviceType},${record.date},${record.mileageAtService},${record.cost},$desc,\n")
         }
+
+        gasRecords.forEach { record ->
+            var notes = record.notes.replace("\"", "\"\"")
+            if (notes.contains(",")) notes = "\"$notes\""
+            sb.append("Gas,${record.date},,${record.totalCost},$notes,${record.gallons}\n")
+        }
+
         return sb.toString()
     }
 }
