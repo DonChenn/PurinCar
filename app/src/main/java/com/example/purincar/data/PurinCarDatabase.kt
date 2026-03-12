@@ -4,8 +4,6 @@ package com.example.purincar.data
 import android.content.Context
 import androidx.room.*
 import androidx.room.RoomDatabase
-import androidx.room.migration.Migration
-import androidx.sqlite.db.SupportSQLiteDatabase
 import kotlinx.coroutines.flow.Flow
 
 @Entity(tableName = "cars")
@@ -129,60 +127,6 @@ interface CarDao {
     suspend fun getGasRecordByFirestoreId(firestoreId: String): GasRecord?
 }
 
-private val MIGRATION_5_6 = object : Migration(5, 6) {
-    override fun migrate(database: SupportSQLiteDatabase) {
-        database.execSQL("""
-            CREATE TABLE IF NOT EXISTS gas_records (
-                id INTEGER PRIMARY KEY AUTOINCREMENT NOT NULL,
-                carId INTEGER NOT NULL,
-                date TEXT NOT NULL,
-                gallons REAL NOT NULL,
-                pricePerGallon REAL NOT NULL,
-                notes TEXT NOT NULL DEFAULT '',
-                FOREIGN KEY(carId) REFERENCES cars(id) ON DELETE CASCADE
-            )
-        """.trimIndent())
-    }
-}
-
-private val MIGRATION_6_7 = object : Migration(6, 7) {
-    override fun migrate(database: SupportSQLiteDatabase) {
-        database.execSQL("""
-            CREATE TABLE IF NOT EXISTS gas_records_new (
-                id INTEGER PRIMARY KEY AUTOINCREMENT NOT NULL,
-                carId INTEGER NOT NULL,
-                date TEXT NOT NULL,
-                gallons REAL NOT NULL,
-                totalCost REAL NOT NULL,
-                notes TEXT NOT NULL DEFAULT '',
-                FOREIGN KEY(carId) REFERENCES cars(id) ON DELETE CASCADE
-            )
-        """.trimIndent())
-        database.execSQL("INSERT INTO gas_records_new SELECT id, carId, date, gallons, pricePerGallon, notes FROM gas_records")
-        database.execSQL("DROP TABLE gas_records")
-        database.execSQL("ALTER TABLE gas_records_new RENAME TO gas_records")
-    }
-}
-
-private val MIGRATION_7_8 = object : Migration(7, 8) {
-    override fun migrate(database: SupportSQLiteDatabase) {
-        database.execSQL("ALTER TABLE cars ADD COLUMN firestoreCarId TEXT")
-        database.execSQL("ALTER TABLE maintenance_records ADD COLUMN firestoreId TEXT")
-        database.execSQL("ALTER TABLE gas_records ADD COLUMN firestoreId TEXT")
-    }
-}
-
-private val MIGRATION_8_9 = object : Migration(8, 9) {
-    override fun migrate(database: SupportSQLiteDatabase) {
-        database.execSQL("ALTER TABLE cars ADD COLUMN isDeleted INTEGER NOT NULL DEFAULT 0")
-    }
-}
-
-private val MIGRATION_9_10 = object : Migration(9, 10) {
-    override fun migrate(database: SupportSQLiteDatabase) {
-        database.execSQL("ALTER TABLE cars ADD COLUMN lastSyncedAt INTEGER")
-    }
-}
 
 @Database(entities = [CarEntity::class, MaintenanceRecord::class, GasRecord::class], version = 10)
 abstract class PurinCarDatabase : RoomDatabase() {
@@ -195,8 +139,7 @@ abstract class PurinCarDatabase : RoomDatabase() {
         fun getDatabase(context: Context): PurinCarDatabase {
             return Instance ?: synchronized(this) {
                 Room.databaseBuilder(context, PurinCarDatabase::class.java, "purin_car_db")
-                    .fallbackToDestructiveMigrationFrom(true, 1, 2, 3, 4)
-                    .addMigrations(MIGRATION_5_6, MIGRATION_6_7, MIGRATION_7_8, MIGRATION_8_9, MIGRATION_9_10)
+                    .fallbackToDestructiveMigration()
                     .build()
                     .also { Instance = it }
             }
