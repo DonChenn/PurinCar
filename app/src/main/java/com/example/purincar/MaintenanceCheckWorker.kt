@@ -169,22 +169,11 @@ class MaintenanceCheckWorker(ctx: Context, params: WorkerParameters) : Coroutine
             // Update the car's mileage in the database
             val existingCar = dao.getCarBySmartcarId(vehicleId)
             if (existingCar != null && miles > 0) {
-                dao.updateCar(existingCar.copy(currentMileage = miles))
-                postSyncNotification(existingCar.name, miles)
+                dao.updateCar(existingCar.copy(currentMileage = miles, lastSyncedAt = System.currentTimeMillis()))
             }
         } catch (e: Exception) {
             // Sync failure is non-fatal — notifications will use last known mileage
         }
-    }
-
-    private fun postSyncNotification(carName: String, miles: Int) {
-        val notification = NotificationCompat.Builder(applicationContext, "maintenance")
-            .setSmallIcon(android.R.drawable.ic_dialog_info)
-            .setContentTitle("$carName synced")
-            .setContentText("Odometer updated to ${"%,d".format(miles)} mi")
-            .setAutoCancel(true)
-            .build()
-        notificationManager.notify("sync".hashCode(), notification)
     }
 
     private fun postNotification(carName: String, serviceType: String, threshold: String, progress: Float) {
