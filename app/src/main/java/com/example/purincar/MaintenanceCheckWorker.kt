@@ -142,7 +142,10 @@ class MaintenanceCheckWorker(ctx: Context, params: WorkerParameters) : Coroutine
                     putString("refresh_token", newRefresh)
                 }
             } else if (!checkRes.isSuccessful) {
+                checkRes.body?.close()
                 return
+            } else {
+                checkRes.body?.close()
             }
 
             // Fetch vehicles list (always use a fresh request so we have a valid response body)

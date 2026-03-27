@@ -19,7 +19,9 @@ import androidx.core.content.edit
 import androidx.lifecycle.lifecycleScope
 import androidx.security.crypto.EncryptedSharedPreferences
 import androidx.security.crypto.MasterKey
+import androidx.work.Constraints
 import androidx.work.ExistingPeriodicWorkPolicy
+import androidx.work.NetworkType
 import androidx.work.PeriodicWorkRequestBuilder
 import androidx.work.WorkManager
 import com.example.purincar.data.CarEntity
@@ -191,7 +193,12 @@ class MainActivity : ComponentActivity() {
     }
 
     private fun scheduleMaintenanceCheck() {
-        val workRequest = PeriodicWorkRequestBuilder<MaintenanceCheckWorker>(1, TimeUnit.DAYS).build()
+        val constraints = Constraints.Builder()
+            .setRequiredNetworkType(NetworkType.CONNECTED)
+            .build()
+        val workRequest = PeriodicWorkRequestBuilder<MaintenanceCheckWorker>(1, TimeUnit.DAYS)
+            .setConstraints(constraints)
+            .build()
         WorkManager.getInstance(this).enqueueUniquePeriodicWork(
             "maintenance_check",
             ExistingPeriodicWorkPolicy.UPDATE,
