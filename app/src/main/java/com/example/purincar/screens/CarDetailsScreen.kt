@@ -168,6 +168,9 @@ fun VehicleStatusTab(car: CarEntity?, onRefreshSmartcar: () -> Unit) {
     val lastSyncedText = car?.lastSyncedAt?.let { millis ->
         SimpleDateFormat("MMM d, yyyy 'at' h:mm a", Locale.getDefault()).format(Date(millis))
     }
+    val lastCheckedText = car?.lastBackgroundCheckAt?.let { millis ->
+        SimpleDateFormat("MMM d, yyyy 'at' h:mm a", Locale.getDefault()).format(Date(millis))
+    }
 
     Column(
         modifier = Modifier
@@ -209,7 +212,14 @@ fun VehicleStatusTab(car: CarEntity?, onRefreshSmartcar: () -> Unit) {
 
                 if (lastSyncedText != null) {
                     Text(
-                        text = "Last updated: $lastSyncedText",
+                        text = "Last synced: $lastSyncedText",
+                        fontSize = 12.sp,
+                        color = Color.White.copy(alpha = 0.6f)
+                    )
+                }
+                if (lastCheckedText != null) {
+                    Text(
+                        text = "Last background check: $lastCheckedText",
                         fontSize = 12.sp,
                         color = Color.White.copy(alpha = 0.6f)
                     )

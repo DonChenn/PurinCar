@@ -5,15 +5,11 @@ import android.app.NotificationManager
 import android.content.Context
 import androidx.core.app.NotificationCompat
 import androidx.core.content.edit
-import androidx.security.crypto.EncryptedSharedPreferences
-import androidx.security.crypto.MasterKey
 import androidx.work.CoroutineWorker
 import androidx.work.WorkerParameters
 import com.example.purincar.data.CarDao
 import com.example.purincar.data.PurinCarDatabase
 import kotlinx.coroutines.flow.first
-import okhttp3.Credentials
-import okhttp3.FormBody
 import okhttp3.OkHttpClient
 import okhttp3.Request
 import org.json.JSONObject
@@ -92,22 +88,18 @@ class MaintenanceCheckWorker(ctx: Context, params: WorkerParameters) : Coroutine
             }
         }
 
+        val checkedAt = System.currentTimeMillis()
+        for (car in cars) {
+            dao.updateCar(car.copy(lastBackgroundCheckAt = checkedAt))
+        }
+
         return Result.success()
     }
 
     private suspend fun syncSmartcar(dao: CarDao) {
         try {
-            val masterKey = MasterKey.Builder(applicationContext)
-                .setKeyScheme(MasterKey.KeyScheme.AES256_GCM)
-                .build()
-            val securePrefs = EncryptedSharedPreferences.create(
-                applicationContext, "smartcar_prefs", masterKey,
-                EncryptedSharedPreferences.PrefKeyEncryptionScheme.AES256_SIV,
-                EncryptedSharedPreferences.PrefValueEncryptionScheme.AES256_GCM
-            )
-
-            var accessToken = securePrefs.getString("access_token", null) ?: return
-            val refreshToken = securePrefs.getString("refresh_token", null)
+            val tokenManager = SmartcarTokenManager(applicationContext, clientId, clientSecret)
+            var accessToken = tokenManager.getAccessToken() ?: return
 
             // Check token validity, refresh if needed
             val checkRes = client.newCall(
@@ -117,35 +109,13 @@ class MaintenanceCheckWorker(ctx: Context, params: WorkerParameters) : Coroutine
                     .build()
             ).execute()
 
-            if (checkRes.code == 401 && refreshToken != null) {
-                checkRes.body?.close()
-                val refreshRes = client.newCall(
-                    Request.Builder()
-                        .url("https://auth.smartcar.com/oauth/token")
-                        .header("Authorization", Credentials.basic(clientId, clientSecret))
-                        .post(
-                            FormBody.Builder()
-                                .add("grant_type", "refresh_token")
-                                .add("refresh_token", refreshToken)
-                                .build()
-                        )
-                        .build()
-                ).execute()
-
-                if (!refreshRes.isSuccessful) return
-                val refreshBody = refreshRes.body?.string() ?: return
-                val newJson = JSONObject(refreshBody)
-                accessToken = newJson.getString("access_token")
-                val newRefresh = newJson.optString("refresh_token", refreshToken)
-                securePrefs.edit {
-                    putString("access_token", accessToken)
-                    putString("refresh_token", newRefresh)
+            when {
+                checkRes.code == 401 -> {
+                    checkRes.body?.close()
+                    accessToken = tokenManager.refreshAccessToken() ?: return
                 }
-            } else if (!checkRes.isSuccessful) {
-                checkRes.body?.close()
-                return
-            } else {
-                checkRes.body?.close()
+                checkRes.isSuccessful -> checkRes.body?.close()
+                else -> { checkRes.body?.close(); return }
             }
 
             // Fetch vehicles list (always use a fresh request so we have a valid response body)

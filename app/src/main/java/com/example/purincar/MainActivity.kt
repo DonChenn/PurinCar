@@ -1,7 +1,6 @@
 package com.example.purincar
 
 import android.Manifest
-import android.content.SharedPreferences
 import android.content.pm.PackageManager
 import android.os.Build
 import android.os.Bundle
@@ -17,8 +16,6 @@ import androidx.compose.runtime.setValue
 import androidx.core.content.ContextCompat
 import androidx.core.content.edit
 import androidx.lifecycle.lifecycleScope
-import androidx.security.crypto.EncryptedSharedPreferences
-import androidx.security.crypto.MasterKey
 import androidx.work.Constraints
 import androidx.work.ExistingPeriodicWorkPolicy
 import androidx.work.NetworkType
@@ -53,6 +50,7 @@ class MainActivity : ComponentActivity() {
 
     private lateinit var smartcarAuth: SmartcarAuth
     private val client = OkHttpClient()
+    private val tokenManager by lazy { SmartcarTokenManager(applicationContext, CLIENT_ID, CLIENT_SECRET) }
 
     private val auth = FirebaseAuth.getInstance()
     private var currentUser by mutableStateOf<FirebaseUser?>(auth.currentUser)
@@ -170,19 +168,6 @@ class MainActivity : ComponentActivity() {
 
     // SMARTCAR API
 
-    private fun securePrefs(): SharedPreferences {
-        val masterKey = MasterKey.Builder(applicationContext)
-            .setKeyScheme(MasterKey.KeyScheme.AES256_GCM)
-            .build()
-        return EncryptedSharedPreferences.create(
-            applicationContext,
-            "smartcar_prefs",
-            masterKey,
-            EncryptedSharedPreferences.PrefKeyEncryptionScheme.AES256_SIV,
-            EncryptedSharedPreferences.PrefValueEncryptionScheme.AES256_GCM
-        )
-    }
-
     private fun requestNotificationPermissionIfNeeded() {
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU &&
             ContextCompat.checkSelfPermission(this, Manifest.permission.POST_NOTIFICATIONS)
@@ -201,7 +186,7 @@ class MainActivity : ComponentActivity() {
             .build()
         WorkManager.getInstance(this).enqueueUniquePeriodicWork(
             "maintenance_check",
-            ExistingPeriodicWorkPolicy.UPDATE,
+            ExistingPeriodicWorkPolicy.KEEP,
             workRequest
         )
     }
@@ -229,10 +214,7 @@ class MainActivity : ComponentActivity() {
                 val accessToken = json.getString("access_token")
                 val refreshToken = json.getString("refresh_token")
 
-                securePrefs().edit {
-                    putString("access_token", accessToken)
-                    putString("refresh_token", refreshToken)
-                }
+                tokenManager.saveTokens(accessToken, refreshToken)
 
                 fetchCarDataWithToken(accessToken)
 
@@ -247,47 +229,28 @@ class MainActivity : ComponentActivity() {
 
     fun refreshSmartcarData() {
         lifecycleScope.launch(Dispatchers.IO) {
-            val prefs = securePrefs()
-            var accessToken = prefs.getString("access_token", null)
-            val refreshToken = prefs.getString("refresh_token", null)
-
-            if (accessToken != null) {
-                try {
-                    val req = Request.Builder()
+            withContext(Dispatchers.Main) {
+                Toast.makeText(applicationContext, "Refreshing vehicle data...", Toast.LENGTH_SHORT).show()
+            }
+            try {
+                var accessToken = tokenManager.getAccessToken() ?: return@launch
+                val res = client.newCall(
+                    Request.Builder()
                         .url("https://api.smartcar.com/v2.0/vehicles")
                         .header("Authorization", "Bearer $accessToken")
                         .build()
-                    val res = client.newCall(req).execute()
-
-                    if (res.code == 401 && refreshToken != null) {
-                        val refreshReq = Request.Builder()
-                            .url("https://auth.smartcar.com/oauth/token")
-                            .header("Authorization", Credentials.basic(CLIENT_ID, CLIENT_SECRET))
-                            .post(
-                                FormBody.Builder()
-                                    .add("grant_type", "refresh_token")
-                                    .add("refresh_token", refreshToken)
-                                    .build()
-                            )
-                            .build()
-                        val refreshRes = client.newCall(refreshReq).execute()
-                        if (refreshRes.isSuccessful) {
-                            val refreshBody = refreshRes.body?.string() ?: throw IOException("Empty refresh response body")
-                            val newJson = JSONObject(refreshBody)
-                            accessToken = newJson.getString("access_token")
-                            val newRefresh = newJson.optString("refresh_token", refreshToken)
-                            prefs.edit {
-                                putString("access_token", accessToken)
-                                putString("refresh_token", newRefresh)
-                            }
-                            fetchCarDataWithToken(accessToken!!)
-                        }
-                    } else if (res.isSuccessful) {
-                        fetchCarDataWithToken(accessToken)
+                ).execute()
+                when {
+                    res.code == 401 -> {
+                        res.body?.close()
+                        accessToken = tokenManager.refreshAccessToken() ?: return@launch
                     }
-                } catch (e: Exception) {
-                    Log.e("Smartcar", "Auto-connect failed", e)
+                    res.isSuccessful -> res.body?.close()
+                    else -> { res.body?.close(); return@launch }
                 }
+                fetchCarDataWithToken(accessToken)
+            } catch (e: Exception) {
+                Log.e("Smartcar", "Auto-connect failed", e)
             }
         }
     }

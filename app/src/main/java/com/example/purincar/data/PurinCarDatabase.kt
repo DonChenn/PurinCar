@@ -19,7 +19,8 @@ data class CarEntity(
     val isLocked: Boolean? = null,
     val firestoreCarId: String? = null,
     val isDeleted: Boolean = false,
-    val lastSyncedAt: Long? = null
+    val lastSyncedAt: Long? = null,
+    val lastBackgroundCheckAt: Long? = null
 )
 
 @Entity(
@@ -128,7 +129,7 @@ interface CarDao {
 }
 
 
-@Database(entities = [CarEntity::class, MaintenanceRecord::class, GasRecord::class], version = 10)
+@Database(entities = [CarEntity::class, MaintenanceRecord::class, GasRecord::class], version = 11)
 abstract class PurinCarDatabase : RoomDatabase() {
     abstract fun carDao(): CarDao
 
