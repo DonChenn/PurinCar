@@ -284,11 +284,6 @@ fun VehicleStatusTab(
                         fontWeight = FontWeight.Bold,
                         color = Color.White
                     )
-                    Text(
-                        text = "Miles driven per month",
-                        fontSize = 12.sp,
-                        color = Color.White.copy(alpha = 0.6f)
-                    )
                     Spacer(modifier = Modifier.height(12.dp))
                     OdometerHistoryChart(
                         readings = odometerHistory,
@@ -304,25 +299,18 @@ private fun shortMonth(isoDate: String): String = try {
     YearMonth.from(LocalDate.parse(isoDate)).format(DateTimeFormatter.ofPattern("MMM yyyy"))
 } catch (e: Exception) { isoDate }
 
-private data class MonthlyMileage(val date: String, val milesDriven: Int)
-
 @Composable
 fun OdometerHistoryChart(readings: List<OdometerReading>, modifier: Modifier = Modifier) {
-    // Bucket the full history by calendar month, keeping only the latest (month-end)
-    // reading per month as that month's cumulative odometer value. The chart then
-    // plots the difference between consecutive month-end values — miles driven that
-    // month — rather than the raw, ever-increasing odometer reading.
-    val monthEndReadings = remember(readings) {
+    // Bucket the full history by calendar month (one point per month — the latest
+    // reading in that month, i.e. month-end mileage) instead of plotting every
+    // daily reading, so years of history stay legible on one chart. The odometer is
+    // cumulative, so this naturally renders as a growing line.
+    val points = remember(readings) {
         readings
             .groupBy { YearMonth.from(LocalDate.parse(it.date)) }
             .values
             .map { monthReadings -> monthReadings.maxBy { it.date } }
             .sortedBy { it.date }
-    }
-    val points = remember(monthEndReadings) {
-        monthEndReadings.zipWithNext { prev, curr ->
-            MonthlyMileage(date = curr.date, milesDriven = (curr.miles - prev.miles).coerceAtLeast(0))
-        }
     }
 
     if (points.size < 2) {
@@ -344,10 +332,10 @@ fun OdometerHistoryChart(readings: List<OdometerReading>, modifier: Modifier = M
     fun xFraction(date: String): Float =
         ChronoUnit.MONTHS.between(firstMonth, YearMonth.from(LocalDate.parse(date))).toFloat() / totalMonths
 
-    val maxMiles = points.maxOf { it.milesDriven }
-    val minMiles = points.minOf { it.milesDriven }
+    val maxMiles = points.maxOf { it.miles }
+    val minMiles = points.minOf { it.miles }
     // Pad the value range so the line doesn't hug the top/bottom edge, and avoid
-    // a zero range when every month has the same mileage driven.
+    // a zero range when every reading has the same mileage.
     val valuePadding = ((maxMiles - minMiles) * 0.1f).toInt().coerceAtLeast(1)
     val topValue = maxMiles + valuePadding
     val bottomValue = (minMiles - valuePadding).coerceAtLeast(0)
@@ -384,16 +372,16 @@ fun OdometerHistoryChart(readings: List<OdometerReading>, modifier: Modifier = M
                 }
 
                 val path = Path()
-                points.forEachIndexed { index, point ->
-                    val x = xFraction(point.date) * size.width
-                    val y = yFor(point.milesDriven)
+                points.forEachIndexed { index, reading ->
+                    val x = xFraction(reading.date) * size.width
+                    val y = yFor(reading.miles)
                     if (index == 0) path.moveTo(x, y) else path.lineTo(x, y)
                 }
                 drawPath(path, color = Color.White, style = Stroke(width = 2.dp.toPx()))
 
-                points.forEach { point ->
-                    val x = xFraction(point.date) * size.width
-                    val y = yFor(point.milesDriven)
+                points.forEach { reading ->
+                    val x = xFraction(reading.date) * size.width
+                    val y = yFor(reading.miles)
                     drawCircle(color = Color.White, radius = 3.dp.toPx(), center = Offset(x, y))
                 }
             }
