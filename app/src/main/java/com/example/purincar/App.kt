@@ -19,7 +19,8 @@ import com.example.purincar.ui.theme.PurinYellow
 fun App(
     repository: PurinCarRepository,
     onConnectSmartcar: () -> Unit,
-    onRefreshSmartcar: () -> Unit
+    onRefreshSmartcar: () -> Unit,
+    isRefreshingSmartcar: Boolean
 ) {
     PurinCarTheme {
         Column {
@@ -37,7 +38,8 @@ fun App(
                 NavigationRoot(
                     repository = repository,
                     onConnectSmartcar = onConnectSmartcar,
-                    onRefreshSmartcar = onRefreshSmartcar
+                    onRefreshSmartcar = onRefreshSmartcar,
+                    isRefreshingSmartcar = isRefreshingSmartcar
                 )
             }
         }

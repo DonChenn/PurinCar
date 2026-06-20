@@ -57,6 +57,24 @@ data class GasRecord(
     val firestoreId: String? = null
 )
 
+@Entity(
+    tableName = "odometer_readings",
+    foreignKeys = [ForeignKey(
+        entity = CarEntity::class,
+        parentColumns = ["id"],
+        childColumns = ["carId"],
+        onDelete = ForeignKey.CASCADE
+    )]
+)
+data class OdometerReading(
+    @PrimaryKey(autoGenerate = true) val id: Int = 0,
+    val carId: Int,
+    val miles: Int,
+    val date: String,                 // ISO yyyy-MM-dd
+    val source: String = "manual",    // "smartcar" | "manual"
+    val firestoreId: String? = null
+)
+
 @Dao
 interface CarDao {
     @Insert
@@ -127,10 +145,31 @@ interface CarDao {
 
     @Query("SELECT * FROM gas_records WHERE firestoreId = :firestoreId LIMIT 1")
     suspend fun getGasRecordByFirestoreId(firestoreId: String): GasRecord?
+
+    @Insert
+    suspend fun insertOdometerReading(reading: OdometerReading): Long
+
+    @Update
+    suspend fun updateOdometerReading(reading: OdometerReading)
+
+    @Delete
+    suspend fun deleteOdometerReading(reading: OdometerReading)
+
+    @Query("SELECT * FROM odometer_readings WHERE carId = :carId ORDER BY date DESC, miles DESC")
+    fun getOdometerReadingsForCar(carId: Int): Flow<List<OdometerReading>>
+
+    @Query("SELECT * FROM odometer_readings WHERE carId = :carId ORDER BY date DESC, miles DESC")
+    suspend fun getOdometerReadingsForCarOnce(carId: Int): List<OdometerReading>
+
+    @Query("SELECT * FROM odometer_readings WHERE carId = :carId AND date = :date LIMIT 1")
+    suspend fun getOdometerReadingForDate(carId: Int, date: String): OdometerReading?
+
+    @Query("SELECT * FROM odometer_readings WHERE firestoreId = :firestoreId LIMIT 1")
+    suspend fun getOdometerReadingByFirestoreId(firestoreId: String): OdometerReading?
 }
 
 
-@Database(entities = [CarEntity::class, MaintenanceRecord::class, GasRecord::class], version = 12)
+@Database(entities = [CarEntity::class, MaintenanceRecord::class, GasRecord::class, OdometerReading::class], version = 13)
 abstract class PurinCarDatabase : RoomDatabase() {
     abstract fun carDao(): CarDao
 

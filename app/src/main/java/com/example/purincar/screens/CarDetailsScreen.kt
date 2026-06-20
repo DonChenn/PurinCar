@@ -5,8 +5,12 @@ import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
+import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.verticalScroll
 import androidx.compose.foundation.lazy.LazyColumn
+import androidx.compose.foundation.lazy.LazyListState
 import androidx.compose.foundation.lazy.items
+import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.foundation.shape.RoundedCornerShape
 import android.app.DatePickerDialog
 import androidx.compose.foundation.ExperimentalFoundationApi
@@ -41,6 +45,7 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.example.purincar.data.CarEntity
 import com.example.purincar.data.GasRecord
+import com.example.purincar.data.OdometerReading
 import com.example.purincar.ui.theme.PurinBrown
 import com.example.purincar.ui.theme.PurinYellow
 import com.example.purincar.viewmodels.CarDetailsViewModel
@@ -61,11 +66,27 @@ fun CarDetailsScreen(
     viewModel: CarDetailsViewModel,
     gasViewModel: GasViewModel,
     onServiceClick: (String) -> Unit,
-    onRefreshSmartcar: () -> Unit
+    onRefreshSmartcar: () -> Unit,
+    isRefreshingSmartcar: Boolean
 ) {
     val car by viewModel.carInfo.collectAsState(initial = null)
-    val serviceStatuses by viewModel.serviceStatuses.collectAsState(initial = emptyList())
+    // StateFlow: its cached value is read synchronously, so the list isn't empty on
+    // the first frame after a back-swipe — required for scroll restoration to land.
+    val serviceStatuses by viewModel.serviceStatuses.collectAsState()
+    val odometerHistory by viewModel.odometerHistory.collectAsState(initial = emptyList())
     var selectedTab by rememberSaveable { mutableIntStateOf(0) }
+    // Seed from the (retained) ViewModel so the Records scroll position is restored
+    // when returning from ServiceHistory, including via predictive back. The
+    // snapshotFlow below keeps the saved position in sync as the user scrolls.
+    val recordsListState = rememberLazyListState(
+        initialFirstVisibleItemIndex = viewModel.recordsScrollIndex,
+        initialFirstVisibleItemScrollOffset = viewModel.recordsScrollOffset
+    )
+    LaunchedEffect(recordsListState) {
+        snapshotFlow {
+            recordsListState.firstVisibleItemIndex to recordsListState.firstVisibleItemScrollOffset
+        }.collect { (index, offset) -> viewModel.saveRecordsScroll(index, offset) }
+    }
 
     Scaffold(
         containerColor = PurinYellow,
@@ -132,8 +153,8 @@ fun CarDetailsScreen(
                 )
         ) {
             when (selectedTab) {
-                0 -> VehicleStatusTab(car, onRefreshSmartcar)
-                1 -> ServiceRecordsTab(car, serviceStatuses, viewModel, onServiceClick)
+                0 -> VehicleStatusTab(car, odometerHistory, onRefreshSmartcar, isRefreshingSmartcar)
+                1 -> ServiceRecordsTab(car, serviceStatuses, viewModel, onServiceClick, recordsListState)
                 2 -> GasTab(gasViewModel)
             }
         }
@@ -164,7 +185,12 @@ fun CarHeader(car: CarEntity?) {
 }
 
 @Composable
-fun VehicleStatusTab(car: CarEntity?, onRefreshSmartcar: () -> Unit) {
+fun VehicleStatusTab(
+    car: CarEntity?,
+    odometerHistory: List<OdometerReading>,
+    onRefreshSmartcar: () -> Unit,
+    isRefreshing: Boolean
+) {
     val lastSyncedText = car?.lastSyncedAt?.let { millis ->
         SimpleDateFormat("MMM d, yyyy 'at' h:mm a", Locale.getDefault()).format(Date(millis))
     }
@@ -175,6 +201,7 @@ fun VehicleStatusTab(car: CarEntity?, onRefreshSmartcar: () -> Unit) {
     Column(
         modifier = Modifier
             .fillMaxSize()
+            .verticalScroll(rememberScrollState())
             .padding(start = 16.dp, end = 16.dp, bottom = 16.dp),
         horizontalAlignment = Alignment.CenterHorizontally,
         verticalArrangement = Arrangement.spacedBy(16.dp)
@@ -200,12 +227,22 @@ fun VehicleStatusTab(car: CarEntity?, onRefreshSmartcar: () -> Unit) {
                         color = Color.White
                     )
                     if (car?.smartcarId != null) {
-                        IconButton(onClick = onRefreshSmartcar) {
-                            Icon(
-                                imageVector = Icons.Default.Refresh,
-                                contentDescription = "Refresh",
-                                tint = Color.White
+                        if (isRefreshing) {
+                            CircularProgressIndicator(
+                                modifier = Modifier
+                                    .size(40.dp)
+                                    .padding(8.dp),
+                                color = Color.White,
+                                strokeWidth = 2.dp
                             )
+                        } else {
+                            IconButton(onClick = onRefreshSmartcar) {
+                                Icon(
+                                    imageVector = Icons.Default.Refresh,
+                                    contentDescription = "Refresh",
+                                    tint = Color.White
+                                )
+                            }
                         }
                     }
                 }
@@ -227,6 +264,52 @@ fun VehicleStatusTab(car: CarEntity?, onRefreshSmartcar: () -> Unit) {
 
             }
         }
+
+        if (odometerHistory.isNotEmpty()) {
+            Card(
+                colors = CardDefaults.cardColors(containerColor = PurinBrown),
+                elevation = CardDefaults.cardElevation(2.dp),
+                modifier = Modifier.fillMaxWidth()
+            ) {
+                Column(modifier = Modifier.padding(16.dp)) {
+                    Text(
+                        text = "Odometer History",
+                        fontSize = 20.sp,
+                        fontWeight = FontWeight.Bold,
+                        color = Color.White
+                    )
+                    Spacer(modifier = Modifier.height(8.dp))
+                    odometerHistory.take(15).forEach { reading ->
+                        Row(
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .padding(vertical = 4.dp),
+                            horizontalArrangement = Arrangement.SpaceBetween,
+                            verticalAlignment = Alignment.CenterVertically
+                        ) {
+                            Column {
+                                Text(
+                                    text = formatDate(reading.date),
+                                    fontSize = 14.sp,
+                                    color = Color.White
+                                )
+                                Text(
+                                    text = if (reading.source == "smartcar") "auto" else "manual",
+                                    fontSize = 11.sp,
+                                    color = Color.White.copy(alpha = 0.6f)
+                                )
+                            }
+                            Text(
+                                text = "${reading.miles} mi",
+                                fontSize = 16.sp,
+                                fontWeight = FontWeight.Bold,
+                                color = Color.White
+                            )
+                        }
+                    }
+                }
+            }
+        }
     }
 }
 
@@ -235,7 +318,8 @@ fun ServiceRecordsTab(
     car: CarEntity?,
     serviceStatuses: List<ServiceStatus>,
     viewModel: CarDetailsViewModel,
-    onServiceClick: (String) -> Unit
+    onServiceClick: (String) -> Unit,
+    listState: LazyListState
 ) {
     val context = LocalContext.current
     val scope = rememberCoroutineScope()
@@ -270,6 +354,7 @@ fun ServiceRecordsTab(
         }
 
     LazyColumn(
+        state = listState,
         modifier = Modifier
             .fillMaxSize()
             .padding(start = 16.dp, end = 16.dp, bottom = 16.dp)
@@ -320,12 +405,12 @@ fun GasTab(viewModel: GasViewModel) {
 
     var dateInput by remember { mutableStateOf("") }
     var gallonsInput by remember { mutableStateOf("") }
-    var costInput by remember { mutableStateOf("") }
+    var costInput by remember { mutableStateOf(currencyFieldValue("")) }
     var notesInput by remember { mutableStateOf("") }
 
     fun openAddDialog() {
         selectedRecord = null
-        dateInput = ""; gallonsInput = ""; costInput = ""; notesInput = ""
+        dateInput = ""; gallonsInput = ""; costInput = currencyFieldValue(""); notesInput = ""
         showEntryDialog = true
     }
 
@@ -333,7 +418,7 @@ fun GasTab(viewModel: GasViewModel) {
         selectedRecord = record
         dateInput = record.date
         gallonsInput = record.gallons.toString()
-        costInput = record.totalCost.toString()
+        costInput = currencyFieldValue(centsPrefill(record.totalCost))
         notesInput = record.notes
         showEntryDialog = true
     }
@@ -472,9 +557,9 @@ fun GasTab(viewModel: GasViewModel) {
                     Spacer(modifier = Modifier.height(8.dp))
                     OutlinedTextField(
                         value = costInput,
-                        onValueChange = { costInput = it },
+                        onValueChange = { costInput = currencyFieldValue(formatCentsInput(it.text)) },
                         label = { Text("Total Cost ($)") },
-                        keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Decimal),
+                        keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number),
                         modifier = Modifier.fillMaxWidth()
                     )
                     Spacer(modifier = Modifier.height(8.dp))
@@ -490,7 +575,7 @@ fun GasTab(viewModel: GasViewModel) {
             confirmButton = {
                 Button(onClick = {
                     val g = gallonsInput.toDoubleOrNull() ?: return@Button
-                    val c = costInput.toDoubleOrNull() ?: return@Button
+                    val c = costInput.text.toDoubleOrNull() ?: return@Button
                     if (dateInput.isBlank()) return@Button
                     val existing = selectedRecord
                     if (existing != null) {

@@ -5,6 +5,7 @@ import androidx.lifecycle.viewModelScope
 import com.example.purincar.data.CarEntity
 import com.example.purincar.data.GasRecord
 import com.example.purincar.data.MaintenanceRecord
+import com.example.purincar.data.OdometerReading
 import com.example.purincar.data.repository.PurinCarRepository
 import kotlinx.coroutines.flow.*
 import kotlinx.coroutines.launch
@@ -49,7 +50,22 @@ class CarDetailsViewModel(
     private val allRecords: Flow<List<MaintenanceRecord>> = repository.getRecordsForCar(carId)
     private val allGasRecords: Flow<List<GasRecord>> = repository.getGasRecordsForCar(carId)
 
-    val serviceStatuses: Flow<List<ServiceStatus>> = combine(carInfo, allRecords) { car, records ->
+    val odometerHistory: Flow<List<OdometerReading>> = repository.getOdometerReadingsForCar(carId)
+
+    // Scroll position of the service-records list, kept here so it survives
+    // navigating to ServiceHistory and back (this ViewModel outlives the screen
+    // while its nav entry stays on the back stack — including predictive back).
+    var recordsScrollIndex: Int = 0
+        private set
+    var recordsScrollOffset: Int = 0
+        private set
+
+    fun saveRecordsScroll(index: Int, offset: Int) {
+        recordsScrollIndex = index
+        recordsScrollOffset = offset
+    }
+
+    val serviceStatuses: StateFlow<List<ServiceStatus>> = combine(carInfo, allRecords) { car, records ->
         val currentMileage = car?.currentMileage ?: 0
         val currentDate = LocalDate.now()
 
@@ -91,13 +107,16 @@ class CarDetailsViewModel(
                 timeText = "$daysElapsed / $tInterval days"
             )
         }
-    }
+    }.stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), emptyList())
 
     fun updateMileage(newMileage: Int) {
         viewModelScope.launch {
             val currentCar = carInfo.firstOrNull()
             if (currentCar != null) {
                 repository.updateCar(currentCar.copy(currentMileage = newMileage))
+                repository.recordOdometerReading(
+                    carId, newMileage, LocalDate.now().toString(), "manual"
+                )
             }
         }
     }

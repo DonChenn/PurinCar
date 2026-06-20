@@ -25,7 +25,8 @@ import com.example.purincar.viewmodels.ServiceHistoryViewModel
 fun NavigationRoot(
     repository: PurinCarRepository,
     onConnectSmartcar: () -> Unit,
-    onRefreshSmartcar: () -> Unit
+    onRefreshSmartcar: () -> Unit,
+    isRefreshingSmartcar: Boolean
 ) {
     val backStack = rememberNavBackStack(Route.CarSelectionScreen)
 
@@ -87,7 +88,8 @@ fun NavigationRoot(
                             onServiceClick = { serviceType ->
                                 backStack.add(Route.ServiceHistory(key.car.id, serviceType))
                             },
-                            onRefreshSmartcar = onRefreshSmartcar
+                            onRefreshSmartcar = onRefreshSmartcar,
+                            isRefreshingSmartcar = isRefreshingSmartcar
                         )
                     }
                 }

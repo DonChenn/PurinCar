@@ -9,6 +9,7 @@ import androidx.work.CoroutineWorker
 import androidx.work.WorkerParameters
 import com.example.purincar.data.CarDao
 import com.example.purincar.data.PurinCarDatabase
+import com.example.purincar.data.repository.PurinCarRepository
 import com.google.firebase.auth.FirebaseAuth
 import com.google.firebase.firestore.FirebaseFirestore
 import kotlinx.coroutines.flow.first
@@ -154,6 +155,8 @@ class MaintenanceCheckWorker(ctx: Context, params: WorkerParameters) : Coroutine
                 // and so an older snapshot echo can't clobber it (see
                 // PurinCarRepository.syncCarFromFirestore, which compares lastSyncedAt).
                 pushMileageToFirestore(existingCar.firestoreCarId, miles, syncedAt)
+                // Append to the odometer history (deduped per day).
+                recordOdometerReading(dao, existingCar.id, miles)
             }
         } catch (e: Exception) {
             // Sync failure is non-fatal — notifications will use last known mileage
@@ -176,6 +179,20 @@ class MaintenanceCheckWorker(ctx: Context, params: WorkerParameters) : Coroutine
                 .await()
         } catch (e: Exception) {
             // Non-fatal: Room already has the fresh value; cloud will catch up next run.
+        }
+    }
+
+    /**
+     * Records today's odometer reading (deduped per day) via the repository so the
+     * Room write + Firestore subcollection sync + firestoreId linking stay in one place.
+     */
+    private suspend fun recordOdometerReading(dao: CarDao, carId: Int, miles: Int) {
+        val uid = FirebaseAuth.getInstance().currentUser?.uid ?: return
+        try {
+            val repo = PurinCarRepository(dao, FirebaseFirestore.getInstance(), uid)
+            repo.recordOdometerReading(carId, miles, LocalDate.now().toString(), "smartcar")
+        } catch (e: Exception) {
+            // Non-fatal: history is best-effort.
         }
     }
 

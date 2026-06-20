@@ -59,14 +59,14 @@ fun ServiceHistoryScreen(
     // Form States
     var dateInput by remember { mutableStateOf("") }
     var mileageInput by remember { mutableStateOf("") }
-    var costInput by remember { mutableStateOf("") }
+    var costInput by remember { mutableStateOf(currencyFieldValue("")) }
     var descriptionInput by remember { mutableStateOf("") }
 
     fun openAddDialog() {
         selectedRecord = null
         dateInput = ""
         mileageInput = ""
-        costInput = ""
+        costInput = currencyFieldValue("")
         descriptionInput = ""
         showEntryDialog = true
     }
@@ -75,7 +75,7 @@ fun ServiceHistoryScreen(
         selectedRecord = record
         dateInput = record.date
         mileageInput = record.mileageAtService.toString()
-        costInput = if (record.cost > 0) record.cost.toString() else ""
+        costInput = currencyFieldValue(centsPrefill(record.cost))
         descriptionInput = record.description
         showEntryDialog = true
     }
@@ -270,9 +270,9 @@ fun ServiceHistoryScreen(
 
                     OutlinedTextField(
                         value = costInput,
-                        onValueChange = { costInput = it },
+                        onValueChange = { costInput = currencyFieldValue(formatCentsInput(it.text)) },
                         label = { Text("Cost") },
-                        keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Decimal),
+                        keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number),
                         modifier = Modifier.fillMaxWidth()
                     )
 
@@ -291,7 +291,7 @@ fun ServiceHistoryScreen(
                 Button(
                     onClick = {
                         val m = mileageInput.toIntOrNull()
-                        val c = costInput.toDoubleOrNull() ?: 0.0
+                        val c = costInput.text.toDoubleOrNull() ?: 0.0
 
                         if (dateInput.isNotBlank() && m != null) {
                             if (selectedRecord == null) {

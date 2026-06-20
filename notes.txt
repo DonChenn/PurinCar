@@ -1,5 +1,0 @@
-- update UI mileage with background updates (add odometer to database?)
-- back button from service cards should go back to spot in scroll
-- cost numbers should automatically fill in decimal (ex: entering 123 would be 0.03 -> 0.23 -> 1.23)
-- add a toast for when you press the refresh to fetch from smartcar or loading animation? and give a toast if it fails
-- track odometer and date in a new collection under a car data object

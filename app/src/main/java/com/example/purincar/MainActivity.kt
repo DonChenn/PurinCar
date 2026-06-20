@@ -43,6 +43,7 @@ import okhttp3.FormBody
 import okhttp3.Request
 import org.json.JSONObject
 import java.io.IOException
+import java.time.LocalDate
 import java.util.concurrent.TimeUnit
 
 class MainActivity : ComponentActivity() {
@@ -54,6 +55,7 @@ class MainActivity : ComponentActivity() {
     private val auth = FirebaseAuth.getInstance()
     private var currentUser by mutableStateOf<FirebaseUser?>(auth.currentUser)
     private var repository: PurinCarRepository? = null
+    private var isRefreshingSmartcar by mutableStateOf(false)
 
     private val CLIENT_ID = BuildConfig.SMARTCAR_CLIENT_ID
     private val CLIENT_SECRET = BuildConfig.SMARTCAR_CLIENT_SECRET
@@ -117,7 +119,8 @@ class MainActivity : ComponentActivity() {
                 App(
                     repository = repo,
                     onConnectSmartcar = { smartcarAuth.launchAuthFlow(this) },
-                    onRefreshSmartcar = { refreshSmartcarData() }
+                    onRefreshSmartcar = { refreshSmartcarData() },
+                    isRefreshingSmartcar = isRefreshingSmartcar
                 )
             } else {
                 SignInScreen(onSignInWithGoogle = { launchGoogleSignIn(dao) })
@@ -229,10 +232,14 @@ class MainActivity : ComponentActivity() {
     fun refreshSmartcarData() {
         lifecycleScope.launch(Dispatchers.IO) {
             withContext(Dispatchers.Main) {
+                isRefreshingSmartcar = true
                 Toast.makeText(applicationContext, "Refreshing vehicle data...", Toast.LENGTH_SHORT).show()
             }
             try {
-                var accessToken = tokenManager.getAccessToken() ?: return@launch
+                var accessToken = tokenManager.getAccessToken() ?: run {
+                    toast("Not connected to Smartcar")
+                    return@launch
+                }
                 val res = client.newCall(
                     Request.Builder()
                         .url("https://api.smartcar.com/v2.0/vehicles")
@@ -242,16 +249,30 @@ class MainActivity : ComponentActivity() {
                 when {
                     res.code == 401 -> {
                         res.body?.close()
-                        accessToken = tokenManager.refreshAccessToken() ?: return@launch
+                        accessToken = tokenManager.refreshAccessToken() ?: run {
+                            toast("Session expired — please reconnect Smartcar")
+                            return@launch
+                        }
                     }
                     res.isSuccessful -> res.body?.close()
-                    else -> { res.body?.close(); return@launch }
+                    else -> {
+                        res.body?.close()
+                        toast("Refresh failed (${res.code})")
+                        return@launch
+                    }
                 }
                 fetchCarDataWithToken(accessToken)
             } catch (e: Exception) {
                 Log.e("Smartcar", "Auto-connect failed", e)
+                toast("Refresh failed: ${e.message}")
+            } finally {
+                withContext(Dispatchers.Main) { isRefreshingSmartcar = false }
             }
         }
+    }
+
+    private suspend fun toast(message: String) = withContext(Dispatchers.Main) {
+        Toast.makeText(applicationContext, message, Toast.LENGTH_SHORT).show()
     }
 
     private suspend fun fetchCarDataWithToken(accessToken: String) {
@@ -300,7 +321,16 @@ class MainActivity : ComponentActivity() {
                 lastSyncedAt = now,
             )
 
-            if (existingCar != null) repo.updateCar(carToSave) else repo.insertCar(carToSave)
+            val carId = if (existingCar != null) {
+                repo.updateCar(carToSave)
+                existingCar.id
+            } else {
+                repo.insertCar(carToSave).toInt()
+            }
+            // Append to the odometer history (deduped per day).
+            if (miles > 0) {
+                repo.recordOdometerReading(carId, miles, LocalDate.now().toString(), "smartcar")
+            }
 
             withContext(Dispatchers.Main) {
                 Toast.makeText(applicationContext, "Updated: $carName", Toast.LENGTH_LONG).show()

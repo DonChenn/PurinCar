@@ -5,6 +5,7 @@ import com.example.purincar.data.CarDao
 import com.example.purincar.data.CarEntity
 import com.example.purincar.data.GasRecord
 import com.example.purincar.data.MaintenanceRecord
+import com.example.purincar.data.OdometerReading
 import com.google.firebase.firestore.DocumentChange
 import com.google.firebase.firestore.DocumentSnapshot
 import com.google.firebase.firestore.FirebaseFirestore
@@ -36,6 +37,7 @@ class PurinCarRepository(
     fun getRecordsForType(carId: Int, serviceType: String): Flow<List<MaintenanceRecord>> =
         dao.getRecordsForType(carId, serviceType)
     fun getGasRecordsForCar(carId: Int): Flow<List<GasRecord>> = dao.getGasRecordsForCar(carId)
+    fun getOdometerReadingsForCar(carId: Int): Flow<List<OdometerReading>> = dao.getOdometerReadingsForCar(carId)
     suspend fun getCarBySmartcarId(smartcarId: String): CarEntity? = dao.getCarBySmartcarId(smartcarId)
     suspend fun getCarById(id: Int): CarEntity? = dao.getCarById(id)
 
@@ -133,6 +135,53 @@ class PurinCarRepository(
         val car = dao.getCarById(record.carId) ?: return
         val carFsId = car.firestoreCarId ?: return
         carsCol.document(carFsId).collection("gas_records").document(fsId).delete()
+    }
+
+    // WRITES ODOMETER READINGS
+
+    /**
+     * Records an odometer reading for [carId] on [date], deduped per day: if a
+     * reading already exists for that day it is updated in place rather than
+     * appending a duplicate. Used by both the foreground Smartcar refresh, the
+     * background worker, and manual mileage edits.
+     */
+    suspend fun recordOdometerReading(carId: Int, miles: Int, date: String, source: String) {
+        val existing = dao.getOdometerReadingForDate(carId, date)
+        if (existing != null) {
+            updateOdometerReading(existing.copy(miles = miles, source = source))
+        } else {
+            insertOdometerReading(
+                OdometerReading(carId = carId, miles = miles, date = date, source = source)
+            )
+        }
+    }
+
+    suspend fun insertOdometerReading(reading: OdometerReading): Long {
+        val roomId = dao.insertOdometerReading(reading)
+        val withRoomId = reading.copy(id = roomId.toInt())
+        val car = dao.getCarById(reading.carId) ?: return roomId
+        val carFsId = car.firestoreCarId ?: return roomId
+        val fsDoc = carsCol.document(carFsId).collection("odometer_readings").document()
+        dao.updateOdometerReading(withRoomId.copy(firestoreId = fsDoc.id))
+        fsDoc.set(withRoomId.copy(firestoreId = fsDoc.id).toFirestoreMap())
+        return roomId
+    }
+
+    suspend fun updateOdometerReading(reading: OdometerReading) {
+        dao.updateOdometerReading(reading)
+        val fsId = reading.firestoreId ?: return
+        val car = dao.getCarById(reading.carId) ?: return
+        val carFsId = car.firestoreCarId ?: return
+        carsCol.document(carFsId).collection("odometer_readings").document(fsId)
+            .set(reading.toFirestoreMap())
+    }
+
+    suspend fun deleteOdometerReading(reading: OdometerReading) {
+        dao.deleteOdometerReading(reading)
+        val fsId = reading.firestoreId ?: return
+        val car = dao.getCarById(reading.carId) ?: return
+        val carFsId = car.firestoreCarId ?: return
+        carsCol.document(carFsId).collection("odometer_readings").document(fsId).delete()
     }
 
     // CLOUD LISTENERS
@@ -296,8 +345,40 @@ class PurinCarRepository(
                 }
             }
 
+        val odometerReg = carsCol.document(carFsId).collection("odometer_readings")
+            .addSnapshotListener { snapshot, error ->
+                if (error != null || snapshot == null) return@addSnapshotListener
+                scope.launch(Dispatchers.IO) {
+                    for (change in snapshot.documentChanges) {
+                        when (change.type) {
+                            DocumentChange.Type.ADDED,
+                            DocumentChange.Type.MODIFIED -> {
+                                val doc = change.document
+                                val fsId = doc.id
+                                val existing = dao.getOdometerReadingByFirestoreId(fsId)
+                                val reading = OdometerReading(
+                                    id = existing?.id ?: 0,
+                                    carId = carRoomId,
+                                    miles = (doc.getLong("miles") ?: 0L).toInt(),
+                                    date = doc.getString("date") ?: return@launch,
+                                    source = doc.getString("source") ?: "manual",
+                                    firestoreId = fsId
+                                )
+                                if (existing == null) dao.insertOdometerReading(reading)
+                                else dao.updateOdometerReading(reading)
+                            }
+                            DocumentChange.Type.REMOVED -> {
+                                val existing = dao.getOdometerReadingByFirestoreId(change.document.id)
+                                existing?.let { dao.deleteOdometerReading(it) }
+                            }
+                        }
+                    }
+                }
+            }
+
         listenerRegistrations.add(maintenanceReg)
         listenerRegistrations.add(gasReg)
+        listenerRegistrations.add(odometerReg)
     }
 
     private suspend fun reconcileWithFirestore() {
@@ -356,6 +437,16 @@ class PurinCarRepository(
                     fsDoc.set(record.copy(firestoreId = fsDoc.id).toFirestoreMap())
                 }
             }
+
+            val odometerReadings = dao.getOdometerReadingsForCarOnce(car.id)
+            for (reading in odometerReadings) {
+                if (reading.firestoreId == null) {
+                    val fsDoc = carsCol.document(carFsId)
+                        .collection("odometer_readings").document()
+                    dao.updateOdometerReading(reading.copy(firestoreId = fsDoc.id))
+                    fsDoc.set(reading.copy(firestoreId = fsDoc.id).toFirestoreMap())
+                }
+            }
         }
     }
 }
@@ -384,4 +475,10 @@ private fun GasRecord.toFirestoreMap(): Map<String, Any?> = mapOf(
     "gallons" to gallons,
     "totalCost" to totalCost,
     "notes" to notes
+)
+
+private fun OdometerReading.toFirestoreMap(): Map<String, Any?> = mapOf(
+    "miles" to miles,
+    "date" to date,
+    "source" to source
 )
