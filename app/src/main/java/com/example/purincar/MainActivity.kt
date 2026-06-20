@@ -329,7 +329,7 @@ class MainActivity : ComponentActivity() {
             }
             // Append to the odometer history (deduped per day).
             if (miles > 0) {
-                repo.recordOdometerReading(carId, miles, LocalDate.now().toString(), "smartcar")
+                repo.recordOdometerReading(carId, miles, LocalDate.now().toString())
             }
 
             withContext(Dispatchers.Main) {

@@ -71,7 +71,6 @@ data class OdometerReading(
     val carId: Int,
     val miles: Int,
     val date: String,                 // ISO yyyy-MM-dd
-    val source: String = "manual",    // "smartcar" | "manual"
     val firestoreId: String? = null
 )
 
@@ -169,7 +168,7 @@ interface CarDao {
 }
 
 
-@Database(entities = [CarEntity::class, MaintenanceRecord::class, GasRecord::class, OdometerReading::class], version = 13)
+@Database(entities = [CarEntity::class, MaintenanceRecord::class, GasRecord::class, OdometerReading::class], version = 14)
 abstract class PurinCarDatabase : RoomDatabase() {
     abstract fun carDao(): CarDao
 

@@ -190,7 +190,7 @@ class MaintenanceCheckWorker(ctx: Context, params: WorkerParameters) : Coroutine
         val uid = FirebaseAuth.getInstance().currentUser?.uid ?: return
         try {
             val repo = PurinCarRepository(dao, FirebaseFirestore.getInstance(), uid)
-            repo.recordOdometerReading(carId, miles, LocalDate.now().toString(), "smartcar")
+            repo.recordOdometerReading(carId, miles, LocalDate.now().toString())
         } catch (e: Exception) {
             // Non-fatal: history is best-effort.
         }

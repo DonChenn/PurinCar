@@ -145,13 +145,13 @@ class PurinCarRepository(
      * appending a duplicate. Used by both the foreground Smartcar refresh, the
      * background worker, and manual mileage edits.
      */
-    suspend fun recordOdometerReading(carId: Int, miles: Int, date: String, source: String) {
+    suspend fun recordOdometerReading(carId: Int, miles: Int, date: String) {
         val existing = dao.getOdometerReadingForDate(carId, date)
         if (existing != null) {
-            updateOdometerReading(existing.copy(miles = miles, source = source))
+            updateOdometerReading(existing.copy(miles = miles))
         } else {
             insertOdometerReading(
-                OdometerReading(carId = carId, miles = miles, date = date, source = source)
+                OdometerReading(carId = carId, miles = miles, date = date)
             )
         }
     }
@@ -361,7 +361,6 @@ class PurinCarRepository(
                                     carId = carRoomId,
                                     miles = (doc.getLong("miles") ?: 0L).toInt(),
                                     date = doc.getString("date") ?: return@launch,
-                                    source = doc.getString("source") ?: "manual",
                                     firestoreId = fsId
                                 )
                                 if (existing == null) dao.insertOdometerReading(reading)
@@ -479,6 +478,5 @@ private fun GasRecord.toFirestoreMap(): Map<String, Any?> = mapOf(
 
 private fun OdometerReading.toFirestoreMap(): Map<String, Any?> = mapOf(
     "miles" to miles,
-    "date" to date,
-    "source" to source
+    "date" to date
 )

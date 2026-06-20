@@ -3,6 +3,7 @@ package com.example.purincar.screens
 import android.net.Uri
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
+import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.rememberScrollState
@@ -26,7 +27,9 @@ import androidx.compose.material.icons.filled.LocalGasStation
 import androidx.compose.material.icons.filled.Refresh
 import java.text.SimpleDateFormat
 import java.time.LocalDate
+import java.time.YearMonth
 import java.time.format.DateTimeFormatter
+import java.time.temporal.ChronoUnit
 import java.util.Date
 import java.util.Locale
 import androidx.compose.ui.text.input.KeyboardType
@@ -37,7 +40,10 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.Path
+import androidx.compose.ui.graphics.drawscope.Stroke
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
@@ -278,37 +284,128 @@ fun VehicleStatusTab(
                         fontWeight = FontWeight.Bold,
                         color = Color.White
                     )
-                    Spacer(modifier = Modifier.height(8.dp))
-                    odometerHistory.take(15).forEach { reading ->
-                        Row(
-                            modifier = Modifier
-                                .fillMaxWidth()
-                                .padding(vertical = 4.dp),
-                            horizontalArrangement = Arrangement.SpaceBetween,
-                            verticalAlignment = Alignment.CenterVertically
-                        ) {
-                            Column {
-                                Text(
-                                    text = formatDate(reading.date),
-                                    fontSize = 14.sp,
-                                    color = Color.White
-                                )
-                                Text(
-                                    text = if (reading.source == "smartcar") "auto" else "manual",
-                                    fontSize = 11.sp,
-                                    color = Color.White.copy(alpha = 0.6f)
-                                )
-                            }
-                            Text(
-                                text = "${reading.miles} mi",
-                                fontSize = 16.sp,
-                                fontWeight = FontWeight.Bold,
-                                color = Color.White
-                            )
-                        }
-                    }
+                    Text(
+                        text = "Miles driven per month",
+                        fontSize = 12.sp,
+                        color = Color.White.copy(alpha = 0.6f)
+                    )
+                    Spacer(modifier = Modifier.height(12.dp))
+                    OdometerHistoryChart(
+                        readings = odometerHistory,
+                        modifier = Modifier.fillMaxWidth()
+                    )
                 }
             }
+        }
+    }
+}
+
+private fun shortMonth(isoDate: String): String = try {
+    YearMonth.from(LocalDate.parse(isoDate)).format(DateTimeFormatter.ofPattern("MMM yyyy"))
+} catch (e: Exception) { isoDate }
+
+private data class MonthlyMileage(val date: String, val milesDriven: Int)
+
+@Composable
+fun OdometerHistoryChart(readings: List<OdometerReading>, modifier: Modifier = Modifier) {
+    // Bucket the full history by calendar month, keeping only the latest (month-end)
+    // reading per month as that month's cumulative odometer value. The chart then
+    // plots the difference between consecutive month-end values — miles driven that
+    // month — rather than the raw, ever-increasing odometer reading.
+    val monthEndReadings = remember(readings) {
+        readings
+            .groupBy { YearMonth.from(LocalDate.parse(it.date)) }
+            .values
+            .map { monthReadings -> monthReadings.maxBy { it.date } }
+            .sortedBy { it.date }
+    }
+    val points = remember(monthEndReadings) {
+        monthEndReadings.zipWithNext { prev, curr ->
+            MonthlyMileage(date = curr.date, milesDriven = (curr.miles - prev.miles).coerceAtLeast(0))
+        }
+    }
+
+    if (points.size < 2) {
+        Text(
+            text = "Not enough data yet to chart, keep syncing to build history.",
+            fontSize = 13.sp,
+            color = Color.White.copy(alpha = 0.7f),
+            modifier = modifier
+        )
+        return
+    }
+
+    // X position is proportional to elapsed months (not just point index), so the
+    // axis reflects real calendar spacing between month buckets.
+    val firstMonth = remember(points) { YearMonth.from(LocalDate.parse(points.first().date)) }
+    val totalMonths = remember(points) {
+        ChronoUnit.MONTHS.between(firstMonth, YearMonth.from(LocalDate.parse(points.last().date))).coerceAtLeast(1)
+    }
+    fun xFraction(date: String): Float =
+        ChronoUnit.MONTHS.between(firstMonth, YearMonth.from(LocalDate.parse(date))).toFloat() / totalMonths
+
+    val maxMiles = points.maxOf { it.milesDriven }
+    val minMiles = points.minOf { it.milesDriven }
+    // Pad the value range so the line doesn't hug the top/bottom edge, and avoid
+    // a zero range when every month has the same mileage driven.
+    val valuePadding = ((maxMiles - minMiles) * 0.1f).toInt().coerceAtLeast(1)
+    val topValue = maxMiles + valuePadding
+    val bottomValue = (minMiles - valuePadding).coerceAtLeast(0)
+    val valueRange = (topValue - bottomValue).coerceAtLeast(1)
+
+    Column(modifier = modifier) {
+        Row(modifier = Modifier.fillMaxWidth()) {
+            Column(
+                modifier = Modifier
+                    .width(52.dp)
+                    .height(140.dp),
+                verticalArrangement = Arrangement.SpaceBetween
+            ) {
+                Text("$topValue mi", fontSize = 10.sp, color = Color.White.copy(alpha = 0.7f))
+                Text("$bottomValue mi", fontSize = 10.sp, color = Color.White.copy(alpha = 0.7f))
+            }
+            Canvas(
+                modifier = Modifier
+                    .weight(1f)
+                    .height(140.dp)
+            ) {
+                fun yFor(miles: Int): Float {
+                    val fraction = (miles - bottomValue).toFloat() / valueRange
+                    return size.height - (fraction * size.height)
+                }
+
+                listOf(0f, size.height / 2f, size.height).forEach { y ->
+                    drawLine(
+                        color = Color.White.copy(alpha = 0.15f),
+                        start = Offset(0f, y),
+                        end = Offset(size.width, y),
+                        strokeWidth = 1.dp.toPx()
+                    )
+                }
+
+                val path = Path()
+                points.forEachIndexed { index, point ->
+                    val x = xFraction(point.date) * size.width
+                    val y = yFor(point.milesDriven)
+                    if (index == 0) path.moveTo(x, y) else path.lineTo(x, y)
+                }
+                drawPath(path, color = Color.White, style = Stroke(width = 2.dp.toPx()))
+
+                points.forEach { point ->
+                    val x = xFraction(point.date) * size.width
+                    val y = yFor(point.milesDriven)
+                    drawCircle(color = Color.White, radius = 3.dp.toPx(), center = Offset(x, y))
+                }
+            }
+        }
+        Row(
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(start = 52.dp, top = 4.dp),
+            horizontalArrangement = Arrangement.SpaceBetween
+        ) {
+            Text(shortMonth(points.first().date), fontSize = 10.sp, color = Color.White.copy(alpha = 0.7f))
+            Text(shortMonth(points.last().date), fontSize = 10.sp, color = Color.White.copy(alpha = 0.7f))
         }
     }
 }

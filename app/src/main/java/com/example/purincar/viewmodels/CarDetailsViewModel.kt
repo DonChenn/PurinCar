@@ -115,7 +115,7 @@ class CarDetailsViewModel(
             if (currentCar != null) {
                 repository.updateCar(currentCar.copy(currentMileage = newMileage))
                 repository.recordOdometerReading(
-                    carId, newMileage, LocalDate.now().toString(), "manual"
+                    carId, newMileage, LocalDate.now().toString()
                 )
             }
         }
