@@ -10,7 +10,6 @@ import androidx.work.WorkerParameters
 import com.example.purincar.data.CarDao
 import com.example.purincar.data.PurinCarDatabase
 import kotlinx.coroutines.flow.first
-import okhttp3.OkHttpClient
 import okhttp3.Request
 import org.json.JSONObject
 import java.time.LocalDate
@@ -18,7 +17,7 @@ import java.time.temporal.ChronoUnit
 
 class MaintenanceCheckWorker(ctx: Context, params: WorkerParameters) : CoroutineWorker(ctx, params) {
 
-    private val client = OkHttpClient()
+    private val client = HttpClient.instance
     private val clientId = BuildConfig.SMARTCAR_CLIENT_ID
     private val clientSecret = BuildConfig.SMARTCAR_CLIENT_SECRET
 
@@ -88,9 +87,12 @@ class MaintenanceCheckWorker(ctx: Context, params: WorkerParameters) : Coroutine
             }
         }
 
+        // Partial UPDATE so we don't clobber telemetry/mileage fields that may
+        // have changed (Smartcar sync above, Firestore snapshot listener, foreground UI)
+        // since `cars` was snapshotted at the top of doWork().
         val checkedAt = System.currentTimeMillis()
         for (car in cars) {
-            dao.updateCar(car.copy(lastBackgroundCheckAt = checkedAt))
+            dao.updateLastBackgroundCheck(car.id, checkedAt)
         }
 
         return Result.success()
@@ -139,10 +141,11 @@ class MaintenanceCheckWorker(ctx: Context, params: WorkerParameters) : Coroutine
             val odoBody = odoRes.body?.string() ?: return
             val miles = (JSONObject(odoBody).optDouble("distance", 0.0) * 0.621371).toInt()
 
-            // Update the car's mileage in the database
+            // Partial UPDATE to avoid racing with the Firestore snapshot listener,
+            // which may have written telemetry fields concurrently.
             val existingCar = dao.getCarBySmartcarId(vehicleId)
             if (existingCar != null && miles > 0) {
-                dao.updateCar(existingCar.copy(currentMileage = miles, lastSyncedAt = System.currentTimeMillis()))
+                dao.updateMileageAndSync(existingCar.id, miles, System.currentTimeMillis())
             }
         } catch (e: Exception) {
             // Sync failure is non-fatal — notifications will use last known mileage

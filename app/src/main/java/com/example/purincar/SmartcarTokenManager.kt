@@ -11,13 +11,26 @@ import okhttp3.FormBody
 import okhttp3.OkHttpClient
 import okhttp3.Request
 import org.json.JSONObject
+import java.util.concurrent.TimeUnit
+
+/**
+ * Process-wide OkHttp client. Single connection pool, single dispatcher,
+ * and timeouts so a hung Smartcar call doesn't block a worker forever.
+ */
+object HttpClient {
+    val instance: OkHttpClient = OkHttpClient.Builder()
+        .connectTimeout(15, TimeUnit.SECONDS)
+        .readTimeout(30, TimeUnit.SECONDS)
+        .callTimeout(45, TimeUnit.SECONDS)
+        .build()
+}
 
 class SmartcarTokenManager(
     private val context: Context,
     private val clientId: String,
     private val clientSecret: String
 ) {
-    private val client = OkHttpClient()
+    private val client = HttpClient.instance
 
     private val prefs by lazy {
         val masterKey = MasterKey.Builder(context)

@@ -43,8 +43,14 @@ class PurinCarRepository(
         val carWithRoomId = car.copy(id = roomId.toInt())
         val fsDoc = carsCol.document()
         val carWithFsId = carWithRoomId.copy(firestoreCarId = fsDoc.id)
-        dao.updateCar(carWithFsId)
-        fsDoc.set(carWithFsId.toFirestoreMap())
+        // Persist firestoreCarId only after Firestore acks; otherwise reconcile
+        // can race and soft-delete this row before the write lands.
+        try {
+            fsDoc.set(carWithFsId.toFirestoreMap()).await()
+            dao.updateCar(carWithFsId)
+        } catch (e: Exception) {
+            Log.e(TAG, "Firestore insert failed; will retry via syncLocalDataToCloud", e)
+        }
         return roomId
     }
 
@@ -59,7 +65,10 @@ class PurinCarRepository(
         val softDeleted = car.copy(isDeleted = true)
         dao.updateCar(softDeleted)
         car.firestoreCarId?.let { fsId ->
-            carsCol.document(fsId).delete()
+            // Soft-delete on the server too so the snapshot listener on other
+            // devices receives MODIFIED (with isDeleted=true) instead of REMOVED,
+            // which would trigger a destructive Room delete + cascade.
+            carsCol.document(fsId).update("isDeleted", true)
         }
     }
 
@@ -153,8 +162,11 @@ class PurinCarRepository(
                                 syncCarFromFirestore(change.document)
                             }
                             DocumentChange.Type.REMOVED -> {
+                                // Only fires if the doc was hard-deleted (e.g. from the
+                                // Firestore console). Treat as a soft-delete locally to
+                                // honor the "soft deletes only" invariant.
                                 val existing = dao.getCarByFirestoreId(change.document.id)
-                                existing?.let { dao.deleteCar(it) }
+                                existing?.let { dao.updateCar(it.copy(isDeleted = true)) }
                             }
                         }
                     }
@@ -174,6 +186,8 @@ class PurinCarRepository(
         val currentMileage = (doc.getLong("currentMileage") ?: 0L).toInt()
         val smartcarId = doc.getString("smartcarId")
         val isDeleted = doc.getBoolean("isDeleted") ?: false
+        val lastSyncedAt = doc.getLong("lastSyncedAt")
+        val lastBackgroundCheckAt = doc.getLong("lastBackgroundCheckAt")
 
         val existing = dao.getCarByFirestoreId(doc.id)
         return if (existing == null) {
@@ -183,7 +197,9 @@ class PurinCarRepository(
                     currentMileage = currentMileage,
                     smartcarId = smartcarId,
                     firestoreCarId = doc.id,
-                    isDeleted = isDeleted
+                    isDeleted = isDeleted,
+                    lastSyncedAt = lastSyncedAt,
+                    lastBackgroundCheckAt = lastBackgroundCheckAt
                 )
             )
             roomId.toInt()
@@ -193,7 +209,9 @@ class PurinCarRepository(
                     name = name,
                     currentMileage = currentMileage,
                     smartcarId = smartcarId ?: existing.smartcarId,
-                    isDeleted = isDeleted
+                    isDeleted = isDeleted,
+                    lastSyncedAt = lastSyncedAt ?: existing.lastSyncedAt,
+                    lastBackgroundCheckAt = lastBackgroundCheckAt ?: existing.lastBackgroundCheckAt
                 )
             )
             existing.id
@@ -336,9 +354,9 @@ private fun CarEntity.toFirestoreMap(): Map<String, Any?> = mapOf(
     "name" to name,
     "currentMileage" to currentMileage,
     "smartcarId" to smartcarId,
-    "fuelPercent" to fuelPercent,
-    "isLocked" to isLocked,
-    "isDeleted" to isDeleted
+    "isDeleted" to isDeleted,
+    "lastSyncedAt" to lastSyncedAt,
+    "lastBackgroundCheckAt" to lastBackgroundCheckAt
 )
 
 private fun MaintenanceRecord.toFirestoreMap(): Map<String, Any?> = mapOf(

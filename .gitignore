@@ -13,3 +13,7 @@
 .externalNativeBuild
 .cxx
 local.properties
+CLAUDE.md
+TECHNICAL_OVERVIEW.md
+.gitignore
+

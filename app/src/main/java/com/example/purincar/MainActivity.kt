@@ -40,7 +40,6 @@ import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
 import okhttp3.Credentials
 import okhttp3.FormBody
-import okhttp3.OkHttpClient
 import okhttp3.Request
 import org.json.JSONObject
 import java.io.IOException
@@ -49,7 +48,7 @@ import java.util.concurrent.TimeUnit
 class MainActivity : ComponentActivity() {
 
     private lateinit var smartcarAuth: SmartcarAuth
-    private val client = OkHttpClient()
+    private val client = HttpClient.instance
     private val tokenManager by lazy { SmartcarTokenManager(applicationContext, CLIENT_ID, CLIENT_SECRET) }
 
     private val auth = FirebaseAuth.getInstance()
@@ -293,6 +292,7 @@ class MainActivity : ComponentActivity() {
                 name = carName,
                 currentMileage = miles,
                 lastSyncedAt = now,
+                isDeleted = false,
             ) ?: CarEntity(
                 name = carName,
                 currentMileage = miles,

@@ -12,11 +12,6 @@ data class CarEntity(
     val name: String,
     val currentMileage: Int,
     val smartcarId: String? = null,
-    val fuelPercent: Double? = null,
-    val range: Double? = null,
-    val oilLife: Double? = null,
-    val tirePressure: String? = null,
-    val isLocked: Boolean? = null,
     val firestoreCarId: String? = null,
     val isDeleted: Boolean = false,
     val lastSyncedAt: Long? = null,
@@ -88,6 +83,12 @@ interface CarDao {
     @Query("SELECT * FROM cars WHERE isDeleted = 0")
     suspend fun getAllCarsOnce(): List<CarEntity>
 
+    @Query("UPDATE cars SET lastBackgroundCheckAt = :timestamp WHERE id = :carId")
+    suspend fun updateLastBackgroundCheck(carId: Int, timestamp: Long)
+
+    @Query("UPDATE cars SET currentMileage = :mileage, lastSyncedAt = :syncedAt WHERE id = :carId")
+    suspend fun updateMileageAndSync(carId: Int, mileage: Int, syncedAt: Long)
+
     @Insert
     suspend fun insertRecord(record: MaintenanceRecord): Long
 
@@ -129,7 +130,7 @@ interface CarDao {
 }
 
 
-@Database(entities = [CarEntity::class, MaintenanceRecord::class, GasRecord::class], version = 11)
+@Database(entities = [CarEntity::class, MaintenanceRecord::class, GasRecord::class], version = 12)
 abstract class PurinCarDatabase : RoomDatabase() {
     abstract fun carDao(): CarDao
 

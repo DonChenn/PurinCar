@@ -225,21 +225,6 @@ fun VehicleStatusTab(car: CarEntity?, onRefreshSmartcar: () -> Unit) {
                     )
                 }
 
-                Spacer(modifier = Modifier.height(16.dp))
-
-                Row(modifier = Modifier.fillMaxWidth()) {
-                    Box(modifier = Modifier.weight(1f), contentAlignment = Alignment.CenterStart) {
-                        StatusItem("Doors", if (car?.isLocked == true) "Locked" else "Unlocked")
-                    }
-                    Box(modifier = Modifier.weight(1f), contentAlignment = Alignment.CenterEnd) {
-                        StatusItem(
-                            "Fuel",
-                            "${((car?.fuelPercent ?: 0.0) * 100).toInt()}%",
-                            isRightAligned = true
-                        )
-                    }
-                }
-                Spacer(modifier = Modifier.height(16.dp))
             }
         }
     }
@@ -318,30 +303,6 @@ fun ServiceRecordsTab(
                 onClick = { onServiceClick(status.name) })
             Spacer(modifier = Modifier.height(16.dp))
         }
-    }
-}
-
-@Composable
-fun StatusItem(label: String, value: String, isRightAligned: Boolean = false) {
-    Column(
-        modifier = Modifier.fillMaxWidth(),
-        horizontalAlignment = if (isRightAligned) Alignment.End else Alignment.Start
-    ) {
-        Text(
-            text = label,
-            fontSize = 14.sp,
-            color = Color.White.copy(alpha = 0.7f),
-            textAlign = if (isRightAligned) TextAlign.End else TextAlign.Start,
-            modifier = Modifier.fillMaxWidth()
-        )
-        Text(
-            text = value,
-            fontSize = 18.sp,
-            fontWeight = FontWeight.Bold,
-            color = Color.White,
-            textAlign = if (isRightAligned) TextAlign.End else TextAlign.Start,
-            modifier = Modifier.fillMaxWidth()
-        )
     }
 }
 
