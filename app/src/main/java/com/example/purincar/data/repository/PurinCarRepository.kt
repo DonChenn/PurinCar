@@ -15,6 +15,7 @@ import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.tasks.await
+import java.util.Collections
 
 private const val TAG = "PurinCarRepository"
 
@@ -24,7 +25,9 @@ class PurinCarRepository(
     val uid: String
 ) {
     private val carsCol get() = firestore.collection("users").document(uid).collection("cars")
-    private val listenerRegistrations = mutableListOf<ListenerRegistration>()
+    // Mutated from Firestore callback coroutines (Dispatchers.IO) and cleared from
+    // stopListening() on the main thread — must be thread-safe.
+    private val listenerRegistrations = Collections.synchronizedList(mutableListOf<ListenerRegistration>())
 
     // READS ROOM
 
@@ -176,8 +179,11 @@ class PurinCarRepository(
         }
     }
     fun stopListening() {
-        listenerRegistrations.forEach { it.remove() }
-        listenerRegistrations.clear()
+        // synchronizedList requires manual synchronization while iterating.
+        synchronized(listenerRegistrations) {
+            listenerRegistrations.forEach { it.remove() }
+            listenerRegistrations.clear()
+        }
     }
 
     // HELPERS
@@ -204,13 +210,19 @@ class PurinCarRepository(
             )
             roomId.toInt()
         } else {
+            // Don't let a stale snapshot clobber a fresher local odometer reading.
+            // The background worker writes mileage to Room (and Firestore) with a
+            // lastSyncedAt timestamp; an older MODIFIED echo must not overwrite it.
+            val remoteSyncedAt = lastSyncedAt ?: 0L
+            val localSyncedAt = existing.lastSyncedAt ?: 0L
+            val remoteIsFresher = remoteSyncedAt >= localSyncedAt
             dao.updateCar(
                 existing.copy(
                     name = name,
-                    currentMileage = currentMileage,
+                    currentMileage = if (remoteIsFresher) currentMileage else existing.currentMileage,
                     smartcarId = smartcarId ?: existing.smartcarId,
                     isDeleted = isDeleted,
-                    lastSyncedAt = lastSyncedAt ?: existing.lastSyncedAt,
+                    lastSyncedAt = if (remoteIsFresher) (lastSyncedAt ?: existing.lastSyncedAt) else existing.lastSyncedAt,
                     lastBackgroundCheckAt = lastBackgroundCheckAt ?: existing.lastBackgroundCheckAt
                 )
             )

@@ -9,7 +9,10 @@ import androidx.work.CoroutineWorker
 import androidx.work.WorkerParameters
 import com.example.purincar.data.CarDao
 import com.example.purincar.data.PurinCarDatabase
+import com.google.firebase.auth.FirebaseAuth
+import com.google.firebase.firestore.FirebaseFirestore
 import kotlinx.coroutines.flow.first
+import kotlinx.coroutines.tasks.await
 import okhttp3.Request
 import org.json.JSONObject
 import java.time.LocalDate
@@ -145,10 +148,34 @@ class MaintenanceCheckWorker(ctx: Context, params: WorkerParameters) : Coroutine
             // which may have written telemetry fields concurrently.
             val existingCar = dao.getCarBySmartcarId(vehicleId)
             if (existingCar != null && miles > 0) {
-                dao.updateMileageAndSync(existingCar.id, miles, System.currentTimeMillis())
+                val syncedAt = System.currentTimeMillis()
+                dao.updateMileageAndSync(existingCar.id, miles, syncedAt)
+                // Also push to Firestore so the fresh reading reaches other devices
+                // and so an older snapshot echo can't clobber it (see
+                // PurinCarRepository.syncCarFromFirestore, which compares lastSyncedAt).
+                pushMileageToFirestore(existingCar.firestoreCarId, miles, syncedAt)
             }
         } catch (e: Exception) {
             // Sync failure is non-fatal — notifications will use last known mileage
+        }
+    }
+
+    /**
+     * Field-level update of just the odometer fields, so we don't clobber other
+     * telemetry the snapshot listener may own. Awaited so the write is flushed to
+     * Firestore's local queue before the worker finishes.
+     */
+    private suspend fun pushMileageToFirestore(firestoreCarId: String?, miles: Int, syncedAt: Long) {
+        val uid = FirebaseAuth.getInstance().currentUser?.uid ?: return
+        val carDocId = firestoreCarId ?: return
+        try {
+            FirebaseFirestore.getInstance()
+                .collection("users").document(uid)
+                .collection("cars").document(carDocId)
+                .update(mapOf("currentMileage" to miles, "lastSyncedAt" to syncedAt))
+                .await()
+        } catch (e: Exception) {
+            // Non-fatal: Room already has the fresh value; cloud will catch up next run.
         }
     }
 
