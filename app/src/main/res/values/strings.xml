@@ -1,3 +1,112 @@
 <resources>
     <string name="app_name">PurinCar</string>
+
+    <string name="action_back">Back</string>
+    <string name="action_cancel">Cancel</string>
+    <string name="action_delete">Delete</string>
+    <string name="action_edit">Edit</string>
+    <string name="action_more">More options</string>
+    <string name="action_ok">OK</string>
+    <string name="action_retry">Retry</string>
+    <string name="action_save">Save</string>
+    <string name="action_sign_out">Sign out</string>
+
+    <string name="state_loading">Loading</string>
+
+    <string name="sign_in_tagline">Track your vehicle maintenance</string>
+    <string name="sign_in_google">Sign in with Google</string>
+    <string name="sign_in_no_account">Add a Google account to this device to sign in.</string>
+    <string name="sign_out_title">Sign out?</string>
+    <string name="sign_out_message">Your garage stays saved to your account and comes back when you sign in again.</string>
+
+    <string name="garage_title">My Garage</string>
+    <string name="garage_empty">Tap + to import your car</string>
+    <string name="garage_connect">Import car from Smartcar</string>
+    <string name="garage_delete_title">Delete Car</string>
+    <string name="garage_delete_message">Are you sure you want to delete %1$s?</string>
+
+    <string name="smartcar_updated">Updated: %1$s</string>
+    <string name="smartcar_not_connected">Not connected to Smartcar. Tap + in the garage to connect.</string>
+    <string name="smartcar_login_cancelled">Smartcar login was cancelled.</string>
+    <string name="smartcar_failed">Smartcar refresh failed: %1$s</string>
+
+    <string name="details_tab_status">Status</string>
+    <string name="details_tab_records">Records</string>
+    <string name="details_tab_gas">Gas</string>
+    <string name="details_car_missing">This car is no longer in your garage.</string>
+    <string name="details_odometer">Odometer: %1$s miles</string>
+    <string name="details_vehicle_health">Vehicle Health</string>
+    <string name="details_refresh">Refresh from Smartcar</string>
+    <string name="details_last_synced">Last synced: %1$s</string>
+    <string name="details_last_background_check">Last background check: %1$s</string>
+    <string name="details_odometer_history">Odometer History</string>
+    <string name="details_import_csv">Import CSV</string>
+    <string name="details_export_csv">Export CSV</string>
+    <string name="details_csv_exported">Records exported.</string>
+    <string name="details_csv_failed">Couldn\'t read or write that file.</string>
+    <plurals name="details_csv_imported">
+        <item quantity="one">Imported %1$d record.</item>
+        <item quantity="other">Imported %1$d records.</item>
+    </plurals>
+    <plurals name="details_csv_skipped">
+        <item quantity="one">Skipped %1$d row that couldn\'t be read.</item>
+        <item quantity="other">Skipped %1$d rows that couldn\'t be read.</item>
+    </plurals>
+
+    <string name="chart_range_3m">3M</string>
+    <string name="chart_range_6m">6M</string>
+    <string name="chart_range_1y">1Y</string>
+    <string name="chart_range_all">All</string>
+    <string name="chart_not_enough_data">Not enough data yet to chart, keep syncing to build history.</string>
+    <string name="chart_not_enough_in_range">Not enough readings in this range, try a longer one.</string>
+    <string name="chart_miles_driven">+%1$s mi over this period</string>
+
+    <string name="service_engine_oil">Engine Oil</string>
+    <string name="service_tire_rotation">Tire Rotation</string>
+    <string name="service_air_filters">Air Filters</string>
+    <string name="service_engine_coolant">Engine Coolant</string>
+    <string name="service_brake_fluid">Brake Fluid</string>
+    <string name="service_battery_fan">Battery Fan</string>
+    <string name="service_transmission_fluid">Transmission Fluid</string>
+    <string name="service_spark_plugs">Spark Plugs</string>
+    <string name="service_miscellaneous">Miscellaneous</string>
+    <string name="service_mileage">Mileage</string>
+    <string name="service_mileage_value">%1$s / %2$s mi</string>
+    <string name="service_time">Time</string>
+    <plurals name="service_time_value">
+        <item quantity="one">%1$d / %2$d day</item>
+        <item quantity="other">%1$d / %2$d days</item>
+    </plurals>
+    <string name="service_total_cost">Accumulated Costs: %1$s</string>
+    <string name="service_empty">No records found.</string>
+    <string name="service_add">Add record</string>
+    <string name="service_add_title">Add Service Record</string>
+    <string name="service_edit_title">Edit Service Record</string>
+    <string name="service_mileage_field">Mileage</string>
+    <string name="service_cost">Cost</string>
+    <string name="service_description">Description (Notes, Parts, etc.)</string>
+    <string name="service_miles_value">%1$s miles</string>
+    <string name="service_delete_message">Are you sure you want to delete this service record?</string>
+
+    <string name="gas_total_spent">Total Spent: %1$s</string>
+    <string name="gas_total_gallons">Total Gallons: %1$s gal</string>
+    <string name="gas_gallons_value">%1$s gal</string>
+    <string name="gas_add">Add gas record</string>
+    <string name="gas_add_title">Add Gas Record</string>
+    <string name="gas_edit_title">Edit Gas Record</string>
+    <string name="gas_gallons">Gallons</string>
+    <string name="gas_total_cost">Total Cost ($)</string>
+    <string name="gas_notes">Notes (optional)</string>
+    <string name="gas_delete_message">Are you sure you want to delete this gas record?</string>
+
+    <string name="record_options_title">Options</string>
+    <string name="record_options_message">Choose an action for this record.</string>
+    <string name="record_delete_title">Delete Record?</string>
+
+    <string name="form_date">Date</string>
+    <string name="form_pick_date">Select date</string>
+
+    <string name="notification_channel_maintenance">Maintenance Reminders</string>
+    <string name="notification_due_title">%1$s due (%2$d%%)</string>
+    <string name="notification_due_text">%1$s — %2$d%% through service interval</string>
 </resources>
