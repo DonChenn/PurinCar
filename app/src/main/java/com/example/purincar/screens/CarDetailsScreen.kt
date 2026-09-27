@@ -29,7 +29,6 @@ import java.text.SimpleDateFormat
 import java.time.LocalDate
 import java.time.YearMonth
 import java.time.format.DateTimeFormatter
-import java.time.temporal.ChronoUnit
 import java.util.Date
 import java.util.Locale
 import androidx.compose.ui.text.input.KeyboardType
@@ -41,8 +40,11 @@ import androidx.compose.runtime.getValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.geometry.Offset
+import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.Path
+import androidx.compose.ui.graphics.StrokeCap
+import androidx.compose.ui.graphics.StrokeJoin
 import androidx.compose.ui.graphics.drawscope.Stroke
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontWeight
@@ -295,74 +297,141 @@ fun VehicleStatusTab(
     }
 }
 
-private fun shortMonth(isoDate: String): String = try {
-    YearMonth.from(LocalDate.parse(isoDate)).format(DateTimeFormatter.ofPattern("MMM yyyy"))
-} catch (e: Exception) { isoDate }
+private enum class ChartRange(val label: String, val months: Long?) {
+    THREE_MONTHS("3M", 3),
+    SIX_MONTHS("6M", 6),
+    ONE_YEAR("1Y", 12),
+    ALL("All", null)
+}
+
+// Compact mileage for the narrow y-axis gutter: 123,456 -> "123k", 12,345 -> "12.3k".
+private fun formatMilesCompact(miles: Int): String = when {
+    miles >= 100_000 -> "${miles / 1000}k"
+    miles >= 10_000 -> String.format(Locale.US, "%.1fk", miles / 1000f)
+    else -> String.format(Locale.US, "%,d", miles)
+}
+
+private fun formatAxisDate(date: LocalDate, range: ChartRange): String =
+    date.format(
+        DateTimeFormatter.ofPattern(
+            if (range == ChartRange.THREE_MONTHS || range == ChartRange.SIX_MONTHS) "MMM d" else "MMM yyyy"
+        )
+    )
 
 @Composable
 fun OdometerHistoryChart(readings: List<OdometerReading>, modifier: Modifier = Modifier) {
-    // Bucket the full history by calendar month (one point per month — the latest
-    // reading in that month, i.e. month-end mileage) instead of plotting every
-    // daily reading, so years of history stay legible on one chart. The odometer is
-    // cumulative, so this naturally renders as a growing line.
-    val points = remember(readings) {
-        readings
-            .groupBy { YearMonth.from(LocalDate.parse(it.date)) }
-            .values
-            .map { monthReadings -> monthReadings.maxBy { it.date } }
-            .sortedBy { it.date }
-    }
+    var rangeOrdinal by rememberSaveable { mutableIntStateOf(ChartRange.ALL.ordinal) }
+    val range = ChartRange.entries[rangeOrdinal]
 
-    if (points.size < 2) {
-        Text(
-            text = "Not enough data yet to chart, keep syncing to build history.",
-            fontSize = 13.sp,
-            color = Color.White.copy(alpha = 0.7f),
-            modifier = modifier
-        )
-        return
+    // Bucket granularity adapts to the window so short ranges show real day-to-day
+    // movement while long ranges stay legible: daily for 3M/6M, weekly for 1Y,
+    // monthly for All. Each bucket keeps its latest reading (the odometer is
+    // cumulative, so bucket-end mileage is the right representative).
+    val points = remember(readings, range) {
+        val cutoff = range.months?.let { LocalDate.now().minusMonths(it) }
+        val inRange = readings
+            .mapNotNull { r -> runCatching { LocalDate.parse(r.date) to r.miles }.getOrNull() }
+            .filter { (date, _) -> cutoff == null || !date.isBefore(cutoff) }
+        when (range) {
+            ChartRange.THREE_MONTHS, ChartRange.SIX_MONTHS -> inRange
+            ChartRange.ONE_YEAR -> inRange
+                .groupBy { (date, _) -> date.toEpochDay() / 7 }
+                .values.map { week -> week.maxBy { it.first } }
+            ChartRange.ALL -> inRange
+                .groupBy { (date, _) -> YearMonth.from(date) }
+                .values.map { month -> month.maxBy { it.first } }
+        }.sortedBy { it.first }
     }
-
-    // X position is proportional to elapsed months (not just point index), so the
-    // axis reflects real calendar spacing between month buckets.
-    val firstMonth = remember(points) { YearMonth.from(LocalDate.parse(points.first().date)) }
-    val totalMonths = remember(points) {
-        ChronoUnit.MONTHS.between(firstMonth, YearMonth.from(LocalDate.parse(points.last().date))).coerceAtLeast(1)
-    }
-    fun xFraction(date: String): Float =
-        ChronoUnit.MONTHS.between(firstMonth, YearMonth.from(LocalDate.parse(date))).toFloat() / totalMonths
-
-    val maxMiles = points.maxOf { it.miles }
-    val minMiles = points.minOf { it.miles }
-    // Pad the value range so the line doesn't hug the top/bottom edge, and avoid
-    // a zero range when every reading has the same mileage.
-    val valuePadding = ((maxMiles - minMiles) * 0.1f).toInt().coerceAtLeast(1)
-    val topValue = maxMiles + valuePadding
-    val bottomValue = (minMiles - valuePadding).coerceAtLeast(0)
-    val valueRange = (topValue - bottomValue).coerceAtLeast(1)
 
     Column(modifier = modifier) {
+        Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+            ChartRange.entries.forEach { candidate ->
+                val selected = candidate == range
+                FilterChip(
+                    selected = selected,
+                    onClick = { rangeOrdinal = candidate.ordinal },
+                    label = { Text(candidate.label, fontSize = 12.sp) },
+                    colors = FilterChipDefaults.filterChipColors(
+                        containerColor = Color.Transparent,
+                        labelColor = Color.White.copy(alpha = 0.7f),
+                        selectedContainerColor = Color.White.copy(alpha = 0.2f),
+                        selectedLabelColor = Color.White
+                    ),
+                    border = FilterChipDefaults.filterChipBorder(
+                        enabled = true,
+                        selected = selected,
+                        borderColor = Color.White.copy(alpha = 0.3f),
+                        selectedBorderColor = Color.White
+                    )
+                )
+            }
+        }
+
+        if (points.size < 2) {
+            Text(
+                text = if (readings.size < 2)
+                    "Not enough data yet to chart, keep syncing to build history."
+                else
+                    "Not enough readings in this range, try a longer one.",
+                fontSize = 13.sp,
+                color = Color.White.copy(alpha = 0.7f),
+                modifier = Modifier.padding(top = 12.dp)
+            )
+            return
+        }
+
+        val milesDriven = points.last().second - points.first().second
+        Text(
+            text = String.format(Locale.US, "+%,d mi over this period", milesDriven),
+            fontSize = 12.sp,
+            color = Color.White.copy(alpha = 0.7f),
+            modifier = Modifier.padding(top = 8.dp, bottom = 12.dp)
+        )
+
+        val maxMiles = points.maxOf { it.second }
+        val minMiles = points.minOf { it.second }
+        // Pad the value range so the line doesn't hug the top/bottom edge, and avoid
+        // a zero range when every reading has the same mileage.
+        val valuePadding = ((maxMiles - minMiles) * 0.1f).toInt().coerceAtLeast(1)
+        val topValue = maxMiles + valuePadding
+        val bottomValue = (minMiles - valuePadding).coerceAtLeast(0)
+        val valueRange = (topValue - bottomValue).coerceAtLeast(1)
+
+        // X position is proportional to elapsed days, so the axis reflects real
+        // calendar spacing between readings regardless of bucket size.
+        val firstDay = points.first().first.toEpochDay()
+        val totalDays = (points.last().first.toEpochDay() - firstDay).coerceAtLeast(1)
+        fun xFraction(date: LocalDate): Float = (date.toEpochDay() - firstDay).toFloat() / totalDays
+
         Row(modifier = Modifier.fillMaxWidth()) {
             Column(
                 modifier = Modifier
-                    .width(52.dp)
-                    .height(140.dp),
-                verticalArrangement = Arrangement.SpaceBetween
+                    .width(44.dp)
+                    .height(160.dp),
+                verticalArrangement = Arrangement.SpaceBetween,
+                horizontalAlignment = Alignment.End
             ) {
-                Text("$topValue mi", fontSize = 10.sp, color = Color.White.copy(alpha = 0.7f))
-                Text("$bottomValue mi", fontSize = 10.sp, color = Color.White.copy(alpha = 0.7f))
+                listOf(3, 2, 1, 0).forEach { step ->
+                    Text(
+                        text = formatMilesCompact(bottomValue + valueRange * step / 3),
+                        fontSize = 10.sp,
+                        color = Color.White.copy(alpha = 0.7f)
+                    )
+                }
             }
             Canvas(
                 modifier = Modifier
                     .weight(1f)
-                    .height(140.dp)
+                    .height(160.dp)
+                    .padding(start = 8.dp)
             ) {
                 fun yFor(miles: Int): Float {
                     val fraction = (miles - bottomValue).toFloat() / valueRange
                     return size.height - (fraction * size.height)
                 }
 
-                listOf(0f, size.height / 2f, size.height).forEach { y ->
+                (0..3).forEach { step ->
+                    val y = size.height * step / 3f
                     drawLine(
                         color = Color.White.copy(alpha = 0.15f),
                         start = Offset(0f, y),
@@ -371,19 +440,50 @@ fun OdometerHistoryChart(readings: List<OdometerReading>, modifier: Modifier = M
                     )
                 }
 
-                val path = Path()
-                points.forEachIndexed { index, reading ->
-                    val x = xFraction(reading.date) * size.width
-                    val y = yFor(reading.miles)
-                    if (index == 0) path.moveTo(x, y) else path.lineTo(x, y)
+                val linePath = Path()
+                points.forEachIndexed { index, (date, miles) ->
+                    val x = xFraction(date) * size.width
+                    val y = yFor(miles)
+                    if (index == 0) linePath.moveTo(x, y) else linePath.lineTo(x, y)
                 }
-                drawPath(path, color = Color.White, style = Stroke(width = 2.dp.toPx()))
 
-                points.forEach { reading ->
-                    val x = xFraction(reading.date) * size.width
-                    val y = yFor(reading.miles)
-                    drawCircle(color = Color.White, radius = 3.dp.toPx(), center = Offset(x, y))
+                val fillPath = Path().apply {
+                    addPath(linePath)
+                    lineTo(xFraction(points.last().first) * size.width, size.height)
+                    lineTo(xFraction(points.first().first) * size.width, size.height)
+                    close()
                 }
+                drawPath(
+                    fillPath,
+                    brush = Brush.verticalGradient(
+                        colors = listOf(Color.White.copy(alpha = 0.25f), Color.White.copy(alpha = 0.02f))
+                    )
+                )
+                drawPath(
+                    linePath,
+                    color = Color.White,
+                    style = Stroke(
+                        width = 2.5.dp.toPx(),
+                        cap = StrokeCap.Round,
+                        join = StrokeJoin.Round
+                    )
+                )
+
+                // Per-point dots only when sparse enough to read; the latest reading
+                // always gets an emphasized marker.
+                if (points.size <= 16) {
+                    points.forEach { (date, miles) ->
+                        drawCircle(
+                            color = Color.White,
+                            radius = 3.dp.toPx(),
+                            center = Offset(xFraction(date) * size.width, yFor(miles))
+                        )
+                    }
+                }
+                val (lastDate, lastMiles) = points.last()
+                val lastCenter = Offset(xFraction(lastDate) * size.width, yFor(lastMiles))
+                drawCircle(color = Color.White.copy(alpha = 0.3f), radius = 7.dp.toPx(), center = lastCenter)
+                drawCircle(color = Color.White, radius = 4.dp.toPx(), center = lastCenter)
             }
         }
         Row(
@@ -392,8 +492,21 @@ fun OdometerHistoryChart(readings: List<OdometerReading>, modifier: Modifier = M
                 .padding(start = 52.dp, top = 4.dp),
             horizontalArrangement = Arrangement.SpaceBetween
         ) {
-            Text(shortMonth(points.first().date), fontSize = 10.sp, color = Color.White.copy(alpha = 0.7f))
-            Text(shortMonth(points.last().date), fontSize = 10.sp, color = Color.White.copy(alpha = 0.7f))
+            Text(
+                formatAxisDate(points.first().first, range),
+                fontSize = 10.sp,
+                color = Color.White.copy(alpha = 0.7f)
+            )
+            Text(
+                formatAxisDate(points[points.size / 2].first, range),
+                fontSize = 10.sp,
+                color = Color.White.copy(alpha = 0.7f)
+            )
+            Text(
+                formatAxisDate(points.last().first, range),
+                fontSize = 10.sp,
+                color = Color.White.copy(alpha = 0.7f)
+            )
         }
     }
 }

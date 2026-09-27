@@ -26,14 +26,14 @@ class MaintenanceCheckWorker(ctx: Context, params: WorkerParameters) : Coroutine
     private val clientSecret = BuildConfig.SMARTCAR_CLIENT_SECRET
 
     private val mileageIntervals = mapOf(
-        "Engine Oil" to 5000, "Air Filters" to 15000, "Engine Coolant" to 30000,
-        "Brake Fluid" to 30000, "Battery Fan" to 30000, "Transmission Fluid" to 60000,
-        "Spark Plugs" to 100000
+        "Engine Oil" to 5000, "Tire Rotation" to 7500, "Air Filters" to 15000,
+        "Engine Coolant" to 30000, "Brake Fluid" to 30000, "Battery Fan" to 30000,
+        "Transmission Fluid" to 60000, "Spark Plugs" to 100000
     )
     private val timeIntervals = mapOf(
-        "Engine Oil" to 180, "Air Filters" to 365, "Engine Coolant" to 730,
-        "Brake Fluid" to 730, "Battery Fan" to 1095, "Transmission Fluid" to 1460,
-        "Spark Plugs" to 1825
+        "Engine Oil" to 180, "Tire Rotation" to 180, "Air Filters" to 365,
+        "Engine Coolant" to 730, "Brake Fluid" to 730, "Battery Fan" to 1095,
+        "Transmission Fluid" to 1460, "Spark Plugs" to 1825
     )
 
     private val thresholds = listOf(0.50f, 0.75f, 0.90f)

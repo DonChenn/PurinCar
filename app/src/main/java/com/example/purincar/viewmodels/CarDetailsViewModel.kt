@@ -27,20 +27,20 @@ class CarDetailsViewModel(
 ) : ViewModel() {
 
     private val serviceTypes = listOf(
-        "Engine Oil", "Air Filters", "Engine Coolant", "Brake Fluid",
+        "Engine Oil", "Tire Rotation", "Air Filters", "Engine Coolant", "Brake Fluid",
         "Battery Fan", "Transmission Fluid", "Spark Plugs", "Miscellaneous"
     )
 
     private val mileageIntervals = mapOf(
-        "Engine Oil" to 5000, "Air Filters" to 15000, "Engine Coolant" to 30000,
-        "Brake Fluid" to 30000, "Battery Fan" to 30000, "Transmission Fluid" to 60000,
-        "Spark Plugs" to 100000, "Miscellaneous" to 0
+        "Engine Oil" to 5000, "Tire Rotation" to 7500, "Air Filters" to 15000,
+        "Engine Coolant" to 30000, "Brake Fluid" to 30000, "Battery Fan" to 30000,
+        "Transmission Fluid" to 60000, "Spark Plugs" to 100000, "Miscellaneous" to 0
     )
 
     private val timeIntervals = mapOf(
-        "Engine Oil" to 180, "Air Filters" to 365, "Engine Coolant" to 730,
-        "Brake Fluid" to 730, "Battery Fan" to 1095, "Transmission Fluid" to 1460,
-        "Spark Plugs" to 1825, "Miscellaneous" to 0
+        "Engine Oil" to 180, "Tire Rotation" to 180, "Air Filters" to 365,
+        "Engine Coolant" to 730, "Brake Fluid" to 730, "Battery Fan" to 1095,
+        "Transmission Fluid" to 1460, "Spark Plugs" to 1825, "Miscellaneous" to 0
     )
 
     val carInfo: Flow<CarEntity?> = repository.getAllCars().map { list ->
